@@ -35,7 +35,7 @@ defmodule Billing.MixProject do
     [
       {:phoenix, "~> 1.5.7"},
       {:phoenix_ecto, "~> 4.1"},
-      {:ecto_sql, "~> 3.4"},
+      {:ecto_sql, "~> 3.5"},
       {:postgrex, ">= 0.0.0"},
       {:phoenix_live_view, "~> 0.15.0"},
       {:floki, ">= 0.27.0", only: :test},
@@ -46,7 +46,15 @@ defmodule Billing.MixProject do
       {:telemetry_poller, "~> 0.4"},
       {:gettext, "~> 0.11"},
       {:jason, "~> 1.0"},
-      {:plug_cowboy, "~> 2.0"}
+      {:plug_cowboy, "~> 2.0"},
+
+      #
+      {:hammox, "~> 0.3", only: :test},
+      {:annacl, "~> 1.1.0"},
+      {:antl_utils_elixir, "~> 0.2.0"},
+      {:antl_utils_ecto, "~> 1.1.2"},
+      {:shortcode, "~> 0.5.0"},
+      {:timex, "~> 3.1"}
     ]
   end
 
