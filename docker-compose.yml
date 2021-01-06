@@ -1,0 +1,19 @@
+version: "3"
+services:
+  postgres:
+    container_name: local-postgres
+    image: postgres:13
+    ports:
+      - 5432:5432
+    hostname: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  postgres-ui:
+    container_name: local-postgres-ui
+    image: adminer:latest
+    depends_on:
+      - postgres
+    ports:
+      - 8080:8080
+    hostname: postgres-ui

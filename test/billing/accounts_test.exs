@@ -38,4 +38,13 @@ defmodule Billing.Accounts.AccountsTest do
       assert {:error, :forbidden} = Accounts.authenticate(%{"api_key" => api_key.secret})
     end
   end
+
+  describe "livemode?/1" do
+    test "return the livemode of the api_key" do
+      livemode = Enum.random([true, false])
+      api_key = insert!(:api_key, livemode: livemode)
+
+      assert Accounts.livemode?(api_key) == livemode
+    end
+  end
 end

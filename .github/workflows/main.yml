@@ -1,0 +1,97 @@
+name: main
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: mix format (Elixir ${{ matrix.elixir }} OTP ${{ matrix.otp }})
+    strategy:
+      matrix:
+        otp: ["23.0.2"]
+        elixir: ["1.11.3"]
+        node: ["12.16.2"]
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Install OTP and Elixir
+        uses: actions/setup-elixir@v1
+        with:
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
+
+      - name: Cache mix deps
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-mix-deps
+        with:
+          path: deps
+          key: ${{ runner.os }}-${{ matrix.otp  }}-${{ matrix.elixir }}-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
+
+      - name: Cache node modules
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-${{ matrix.node }}-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+
+      - run: mix deps.get
+      - run: mix deps.unlock --check-unused
+      - run: mix format --check-formatted
+      # - name: Install Node.js
+      #   uses: actions/setup-node@v2
+      #   with:
+      #     node-version: ${{ matrix.node }}
+      # - run: npm ci
+      #   working-directory: ./assets
+      # - run: npm run lint.js
+      #   working-directory: ./assets
+      # - run: npm run lint.css
+      #   working-directory: ./assets
+  test:
+    runs-on: ubuntu-latest
+    name: mix test (Elixir ${{ matrix.elixir }} OTP ${{ matrix.otp }})
+    strategy:
+      matrix:
+        otp: ["23.0.2"]
+        elixir: ["1.11.3"]
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install OTP and Elixir
+        uses: actions/setup-elixir@v1
+        with:
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
+
+      - name: Cache mix deps & build
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-mix-deps-build
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-${{ matrix.otp  }}-${{ matrix.elixir }}-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.otp  }}-${{ matrix.elixir }}-${{ env.cache-name }}-
+
+      - run: mix deps.get
+
+      - name: Set env
+        run: cat env/ci.env >> $GITHUB_ENV
+
+      - name: Run tests
+        run: mix test --trace --slowest 10 --cover

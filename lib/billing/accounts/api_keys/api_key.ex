@@ -44,7 +44,7 @@ defmodule Billing.Accounts.ApiKeys.ApiKey do
     field(:created_at, :utc_datetime)
     field(:expired_at, :utc_datetime)
     field(:livemode, :boolean)
-    field(:last_used_ip_address, Accounts.Extensions.Ecto.IPAddress, virtual: true)
+    field(:last_used_ip_address, Billing.Extensions.Ecto.IPAddress, virtual: true)
     field(:last_used_at, :utc_datetime, virtual: true)
     field(:secret, :string)
     field(:type, :string)

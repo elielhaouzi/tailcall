@@ -1,4 +1,4 @@
-defmodule Accounts.Extensions.Ecto.IPAddress do
+defmodule Billing.Extensions.Ecto.IPAddress do
   use Ecto.Type
 
   @impl true
