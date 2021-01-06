@@ -24,6 +24,8 @@ defmodule Billing.DataCase do
       import Ecto.Changeset
       import Ecto.Query
       import Billing.DataCase
+
+      import Billing.Factory
     end
   end
 
@@ -50,6 +52,13 @@ defmodule Billing.DataCase do
       Regex.replace(~r"%{(\w+)}", message, fn _, key ->
         opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
       end)
+    end)
+  end
+
+  def associations_on(fields, schema) do
+    fields
+    |> Enum.map(fn field ->
+      schema |> Kernel.get_in(List.wrap(field))
     end)
   end
 end
