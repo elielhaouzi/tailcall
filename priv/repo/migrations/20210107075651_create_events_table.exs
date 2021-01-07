@@ -1,4 +1,4 @@
-defmodule Billing.Repo.Migrations.CreateEventsTable do
+defmodule Tailcall.Repo.Migrations.CreateEventsTable do
   use Ecto.Migration
 
   def change do

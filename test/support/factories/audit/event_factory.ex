@@ -1,5 +1,5 @@
-defmodule Billing.Factory.Audit.Event do
-  alias Billing.Audit.Events.Event
+defmodule Tailcall.Factory.Audit.Event do
+  alias Tailcall.Audit.Events.Event
 
   defmacro __using__(_opts) do
     quote do

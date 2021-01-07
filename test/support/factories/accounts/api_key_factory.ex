@@ -1,5 +1,5 @@
-defmodule Billing.Factory.Accounts.ApiKey do
-  alias Billing.Accounts.ApiKeys.{ApiKey, ApiKeyUsage}
+defmodule Tailcall.Factory.Accounts.ApiKey do
+  alias Tailcall.Accounts.ApiKeys.{ApiKey, ApiKeyUsage}
 
   defmacro __using__(_opts) do
     quote do
@@ -10,7 +10,7 @@ defmodule Billing.Factory.Accounts.ApiKey do
           user_id: user_id,
           created_at: utc_now(),
           livemode: false,
-          secret: Billing.Accounts.ApiKeys.generate_secret_key("secret", false)
+          secret: Tailcall.Accounts.ApiKeys.generate_secret_key("secret", false)
         }
         |> type_secret()
         |> type_publishable()

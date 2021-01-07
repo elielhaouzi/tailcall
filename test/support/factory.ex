@@ -1,24 +1,24 @@
-defmodule Billing.Factory do
-  alias Billing.Repo
+defmodule Tailcall.Factory do
+  alias Tailcall.Repo
 
-  use Billing.Factory.Accounts.User
-  use Billing.Factory.Accounts.ApiKey
+  use Tailcall.Factory.Accounts.User
+  use Tailcall.Factory.Accounts.ApiKey
 
-  use Billing.Factory.Audit.Event
+  use Tailcall.Factory.Audit.Event
 
-  # use Billing.Factory.Customer
+  # use Tailcall.Factory.Customer
 
-  # use Billing.Factory.TaxRate
-  # use Billing.Factory.CustomerTaxId
+  # use Tailcall.Factory.TaxRate
+  # use Tailcall.Factory.CustomerTaxId
 
-  # use Billing.Factory.Coupon
-  # use Billing.Factory.Discount
+  # use Tailcall.Factory.Coupon
+  # use Tailcall.Factory.Discount
 
-  # use Billing.Factory.Product
-  # use Billing.Factory.Price
-  # use Billing.Factory.Subscription
+  # use Tailcall.Factory.Product
+  # use Tailcall.Factory.Price
+  # use Tailcall.Factory.Subscription
 
-  # use Billing.Factory.Invoice
+  # use Tailcall.Factory.Invoice
 
   @spec uuid :: <<_::288>>
   def uuid(), do: Ecto.UUID.generate()

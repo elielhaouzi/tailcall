@@ -1,4 +1,4 @@
-defmodule Billing.DataCase do
+defmodule Tailcall.DataCase do
   @moduledoc """
   This module defines the setup for tests requiring
   access to the application's data layer.
@@ -10,7 +10,7 @@ defmodule Billing.DataCase do
   we enable the SQL sandbox, so changes done to the database
   are reverted at the end of every test. If you are using
   PostgreSQL, you can even run database tests asynchronously
-  by setting `use Billing.DataCase, async: true`, although
+  by setting `use Tailcall.DataCase, async: true`, although
   this option is not recommended for other databases.
   """
 
@@ -18,22 +18,22 @@ defmodule Billing.DataCase do
 
   using do
     quote do
-      alias Billing.Repo
+      alias Tailcall.Repo
 
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
-      import Billing.DataCase
+      import Tailcall.DataCase
 
-      import Billing.Factory
+      import Tailcall.Factory
     end
   end
 
   setup tags do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Billing.Repo)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Tailcall.Repo)
 
     unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(Billing.Repo, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(Tailcall.Repo, {:shared, self()})
     end
 
     :ok

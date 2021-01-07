@@ -1,4 +1,4 @@
-# Billing
+# Tailcall
 
 To start your Phoenix server:
 

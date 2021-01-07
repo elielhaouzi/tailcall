@@ -1,4 +1,4 @@
-defmodule BillingWeb.ConnCase do
+defmodule TailcallWeb.ConnCase do
   @moduledoc """
   This module defines the test case to be used by
   tests that require setting up a connection.
@@ -11,7 +11,7 @@ defmodule BillingWeb.ConnCase do
   we enable the SQL sandbox, so changes done to the database
   are reverted at the end of every test. If you are using
   PostgreSQL, you can even run database tests asynchronously
-  by setting `use BillingWeb.ConnCase, async: true`, although
+  by setting `use TailcallWeb.ConnCase, async: true`, although
   this option is not recommended for other databases.
   """
 
@@ -22,20 +22,20 @@ defmodule BillingWeb.ConnCase do
       # Import conveniences for testing with connections
       import Plug.Conn
       import Phoenix.ConnTest
-      import BillingWeb.ConnCase
+      import TailcallWeb.ConnCase
 
-      alias BillingWeb.Router.Helpers, as: Routes
+      alias TailcallWeb.Router.Helpers, as: Routes
 
       # The default endpoint for testing
-      @endpoint BillingWeb.Endpoint
+      @endpoint TailcallWeb.Endpoint
     end
   end
 
   setup tags do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Billing.Repo)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Tailcall.Repo)
 
     unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(Billing.Repo, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(Tailcall.Repo, {:shared, self()})
     end
 
     {:ok, conn: Phoenix.ConnTest.build_conn()}
