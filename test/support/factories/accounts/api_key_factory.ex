@@ -33,6 +33,7 @@ defmodule Billing.Factory.Accounts.ApiKey do
       def build(:api_key_usage) do
         %ApiKeyUsage{
           ip_address: "127.0.0.1",
+          request_id: "request_id",
           used_at: DateTime.utc_now() |> DateTime.truncate(:microsecond)
         }
       end

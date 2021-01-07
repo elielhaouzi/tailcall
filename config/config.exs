@@ -23,9 +23,6 @@ config :logger, :console,
   format: "$date $time $metadata[$level] $message\n",
   metadata: [:pid, :application, :mfa, :request_id]
 
-config :logger,
-  level: System.get_env("EX_LOG_LEVEL", "debug") |> String.to_atom()
-
 config :phoenix, :json_library, Jason
 
 import_config "#{Mix.env()}.exs"

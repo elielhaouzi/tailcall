@@ -18,6 +18,7 @@ defmodule Billing.Accounts.ApiKeys.ApiKeyUsageTest do
 
       assert :api_key_id in changes_keys
       assert :ip_address in changes_keys
+      assert :request_id in changes_keys
       assert :used_at in changes_keys
       refute :new_key in changes_keys
     end
@@ -38,6 +39,7 @@ defmodule Billing.Accounts.ApiKeys.ApiKeyUsageTest do
       assert changeset.valid?
       assert get_field(changeset, :api_key_id) == api_key_usage_params.api_key_id
       assert get_field(changeset, :ip_address) == api_key_usage_params.ip_address
+      assert get_field(changeset, :request_id) == api_key_usage_params.request_id
       assert get_field(changeset, :used_at) == api_key_usage_params.used_at
     end
   end

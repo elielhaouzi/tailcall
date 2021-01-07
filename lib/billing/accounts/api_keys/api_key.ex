@@ -37,7 +37,7 @@ defmodule Billing.Accounts.ApiKeys.ApiKey do
 
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "ak", autogenerate: true}
   schema "api_keys" do
-    field(:object, :string)
+    field(:object, :string, default: "api_key")
 
     belongs_to(:user, User, type: Shortcode.Ecto.ID, prefix: "usr")
 
@@ -49,7 +49,7 @@ defmodule Billing.Accounts.ApiKeys.ApiKey do
     field(:secret, :string)
     field(:type, :string)
 
-    timestamps()
+    timestamps(type: :utc_datetime)
   end
 
   @spec create_changeset(ApiKey.t(), map()) :: Ecto.Changeset.t()

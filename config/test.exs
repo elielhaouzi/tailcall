@@ -5,6 +5,3 @@ config :billing, Billing.Repo,
   pool: Ecto.Adapters.SQL.Sandbox
 
 config :plug, :validate_header_keys_during_test, false
-
-# Print only warnings and errors during test
-config :logger, level: :warn

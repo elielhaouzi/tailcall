@@ -24,14 +24,14 @@ defmodule Billing.Accounts.Users.User do
 
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "usr", autogenerate: true}
   schema "users" do
-    field(:object, :string)
+    field(:object, :string, default: "user")
 
     belongs_to(:performer, Performer)
 
     field(:email, :string)
     field(:name, :string)
 
-    timestamps()
+    timestamps(type: :utc_datetime)
   end
 
   @spec create_changeset(User.t(), map) :: Ecto.Changeset.t()

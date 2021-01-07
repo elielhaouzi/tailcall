@@ -3,6 +3,9 @@ defmodule Billing.Factory do
 
   use Billing.Factory.Accounts.User
   use Billing.Factory.Accounts.ApiKey
+
+  use Billing.Factory.Audit.Event
+
   # use Billing.Factory.Customer
 
   # use Billing.Factory.TaxRate
@@ -20,14 +23,14 @@ defmodule Billing.Factory do
   @spec uuid :: <<_::288>>
   def uuid(), do: Ecto.UUID.generate()
 
-  @spec shortcode_uuid :: binary
-  def shortcode_uuid(), do: uuid() |> Shortcode.to_shortcode!()
+  @spec shortcode_uuid(nil | binary) :: binary
+  def shortcode_uuid(prefix \\ nil), do: uuid() |> Shortcode.to_shortcode!(prefix)
 
   @spec id :: integer
   def id(), do: System.unique_integer([:positive])
 
-  @spec shortcode_id :: binary
-  def shortcode_id(), do: id() |> Shortcode.to_shortcode!()
+  @spec shortcode_id(nil | binary) :: binary
+  def shortcode_id(prefix \\ nil), do: id() |> Shortcode.to_shortcode!(prefix)
 
   @spec utc_now :: DateTime.t()
   def utc_now(), do: DateTime.utc_now() |> DateTime.truncate(:second)

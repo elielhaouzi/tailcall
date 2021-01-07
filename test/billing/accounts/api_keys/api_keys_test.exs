@@ -6,7 +6,7 @@ defmodule Billing.Accounts.ApiKeysTest do
   alias Billing.Accounts.ApiKeys.{ApiKey, ApiKeyUsage}
 
   describe "list_api_keys/1" do
-    test "returns the list of api_keys ordered by the sequence descending" do
+    test "returns the list of api_keys ordered by the sequence ascending" do
       %{id: id_1} = insert!(:api_key, created_at: utc_now())
       %{id: id_2} = insert!(:api_key, created_at: utc_now() |> add(1_000))
 
@@ -116,6 +116,7 @@ defmodule Billing.Accounts.ApiKeysTest do
 
   describe "get_api_key_by/2" do
     test "when the secret exists, returns the api_key" do
+      _ = insert!(:api_key)
       %{id: api_key_id, secret: secret} = insert!(:api_key)
 
       assert %ApiKey{id: ^api_key_id} = ApiKeys.get_api_key_by(secret: secret)

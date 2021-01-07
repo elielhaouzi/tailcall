@@ -33,7 +33,7 @@ defmodule Billing.Accounts.ApiKeys do
   @spec get_api_key_by([{:secret, binary}], keyword) :: ApiKey.t() | nil
   def get_api_key_by([secret: secret], opts \\ []) when is_binary(secret) do
     opts
-    |> Keyword.put(:secret, secret)
+    |> Keyword.put(:filters, secret: secret)
     |> api_key_queryable()
     |> Repo.one()
   end
@@ -83,6 +83,7 @@ defmodule Billing.Accounts.ApiKeys do
       attrs
       |> Map.put("api_key_id", api_key_id)
       |> Map.put("used_at", DateTime.utc_now())
+      |> Map.put("request_id", Logger.metadata()[:request_id])
 
     %ApiKeyUsage{}
     |> ApiKeyUsage.changeset(attrs)
