@@ -1,4 +1,4 @@
-defmodule BillingWeb.ChannelCase do
+defmodule TailcallWeb.ChannelCase do
   @moduledoc """
   This module defines the test case to be used by
   channel tests.
@@ -11,7 +11,7 @@ defmodule BillingWeb.ChannelCase do
   we enable the SQL sandbox, so changes done to the database
   are reverted at the end of every test. If you are using
   PostgreSQL, you can even run database tests asynchronously
-  by setting `use BillingWeb.ChannelCase, async: true`, although
+  by setting `use TailcallWeb.ChannelCase, async: true`, although
   this option is not recommended for other databases.
   """
 
@@ -21,18 +21,18 @@ defmodule BillingWeb.ChannelCase do
     quote do
       # Import conveniences for testing with channels
       import Phoenix.ChannelTest
-      import BillingWeb.ChannelCase
+      import TailcallWeb.ChannelCase
 
       # The default endpoint for testing
-      @endpoint BillingWeb.Endpoint
+      @endpoint TailcallWeb.Endpoint
     end
   end
 
   setup tags do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Billing.Repo)
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Tailcall.Repo)
 
     unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(Billing.Repo, {:shared, self()})
+      Ecto.Adapters.SQL.Sandbox.mode(Tailcall.Repo, {:shared, self()})
     end
 
     :ok

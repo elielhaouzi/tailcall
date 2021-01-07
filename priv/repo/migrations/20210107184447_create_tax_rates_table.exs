@@ -1,4 +1,4 @@
-defmodule Billing.Repo.Migrations.CreateTaxRatesTable do
+defmodule Tailcall.Repo.Migrations.CreateTaxRatesTable do
   use Ecto.Migration
 
   def change do

@@ -1,9 +1,9 @@
-defmodule Billing.MixProject do
+defmodule Tailcall.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :billing,
+      app: :tailcall,
       version: "0.1.0",
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -20,7 +20,7 @@ defmodule Billing.MixProject do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {Billing.Application, []},
+      mod: {Tailcall.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end
@@ -76,7 +76,7 @@ defmodule Billing.MixProject do
 
   defp releases do
     [
-      billing: [
+      tailcall: [
         include_executables_for: [:unix],
         steps: [:assemble, :tar]
       ]

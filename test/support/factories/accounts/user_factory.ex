@@ -1,5 +1,5 @@
-defmodule Billing.Factory.Accounts.User do
-  alias Billing.Accounts.Users.User
+defmodule Tailcall.Factory.Accounts.User do
+  alias Tailcall.Accounts.Users.User
 
   defmacro __using__(_opts) do
     quote do
