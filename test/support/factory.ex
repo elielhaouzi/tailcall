@@ -8,7 +8,7 @@ defmodule Tailcall.Factory do
 
   # use Tailcall.Factory.Customer
 
-  # use Tailcall.Factory.TaxRate
+  use Tailcall.Factory.Billing.TaxRate
   # use Tailcall.Factory.CustomerTaxId
 
   # use Tailcall.Factory.Coupon
@@ -40,7 +40,7 @@ defmodule Tailcall.Factory do
     datetime |> DateTime.add(amount_of_time, time_unit)
   end
 
-  @spec params_for(map) :: map
+  @spec params_for(struct) :: map
   def params_for(schema) when is_struct(schema) do
     schema
     |> AntlUtilsEcto.map_from_struct()
@@ -59,7 +59,17 @@ defmodule Tailcall.Factory do
   end
 
   @spec insert!(atom, Enum.t()) :: any
-  def insert!(factory_name, attributes \\ []) do
-    factory_name |> build(attributes) |> Repo.insert!()
+  def insert!(factory_name, attributes)
+      when is_atom(factory_name) or is_tuple(factory_name) do
+    factory_name |> build(attributes) |> insert!()
+  end
+
+  def insert!(factory_name) when is_atom(factory_name) or is_tuple(factory_name) do
+    factory_name |> build([]) |> insert!()
+  end
+
+  @spec insert!(struct) :: struct
+  def insert!(schema) when is_struct(schema) do
+    schema |> Repo.insert!()
   end
 end

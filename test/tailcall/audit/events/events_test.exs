@@ -49,9 +49,9 @@ defmodule Tailcall.Audit.EventsTest do
   describe "audit_event!/3" do
     test "when data is valid, create an audit event" do
       Logger.metadata(request_id: "request_id")
-      event_schema = Events.new(%{user_id: shortcode_id("usr"), livemode: false})
+      event_schema = Events.new_event(%{user_id: shortcode_id("usr"), livemode: false})
 
-      audit_event = Events.audit!(event_schema, "product.created", %{id: "product_id"})
+      audit_event = Events.audit_event!(event_schema, "product.created", %{id: "product_id"})
       assert %Event{} = audit_event
 
       assert audit_event.user_id == event_schema.user_id
@@ -65,23 +65,23 @@ defmodule Tailcall.Audit.EventsTest do
 
     test "when data is invalid, raises an Ecto.InvalidChangesetError" do
       assert_raise Ecto.InvalidChangesetError, fn ->
-        Events.audit!(%Event{}, "product.created", %{id: "product_id"})
+        Events.audit_event!(%Event{}, "product.created", %{id: "product_id"})
       end
     end
 
     test "when non-existing types is specified, raises an Ecto.InvalidChangesetError" do
-      event_schema = Events.new(%{user_id: shortcode_id("usr"), livemode: false})
+      event_schema = Events.new_event(%{user_id: shortcode_id("usr"), livemode: false})
 
       assert_raise Ecto.InvalidChangesetError, fn ->
-        Events.audit!(event_schema, "event_type", %{id: "product_id"})
+        Events.audit_event!(event_schema, "event_type", %{id: "product_id"})
       end
     end
 
     test "when one of required key is missing, raises an Ecto.InvalidChangesetError" do
-      event_schema = Events.new(%{user_id: shortcode_id("usr"), livemode: false})
+      event_schema = Events.new_event(%{user_id: shortcode_id("usr"), livemode: false})
 
       assert_raise Ecto.InvalidChangesetError, fn ->
-        Events.audit!(event_schema, "product.created", %{})
+        Events.audit_event!(event_schema, "product.created", %{})
       end
     end
   end
@@ -89,11 +89,11 @@ defmodule Tailcall.Audit.EventsTest do
   describe "multi/4" do
     test "create a multi operation with params" do
       Logger.metadata(request_id: "request_id")
-      event_schema = Events.new(%{livemode: false, user_id: shortcode_id("usr")})
+      event_schema = Events.new_event(%{livemode: false, user_id: shortcode_id("usr")})
 
       multi =
         Ecto.Multi.new()
-        |> Events.multi(event_schema, "product.created", %{id: "product_id"})
+        |> Events.audit_event_multi(event_schema, "product.created", %{id: "product_id"})
 
       assert %Ecto.Multi{} = multi
 
@@ -109,13 +109,13 @@ defmodule Tailcall.Audit.EventsTest do
     end
 
     test "creates an ecto multi operation with a function" do
-      event_schema = Events.new(%{livemode: false, user_id: shortcode_id("usr")})
+      event_schema = Events.new_event(%{livemode: false, user_id: shortcode_id("usr")})
       any_schema = Event.changeset(%Event{}, params_for(:event))
 
       multi =
         Ecto.Multi.new()
         |> Ecto.Multi.insert(:any_schema, any_schema)
-        |> Events.multi(
+        |> Events.audit_event_multi(
           event_schema,
           "product.created",
           fn audit_event_schema, changes ->

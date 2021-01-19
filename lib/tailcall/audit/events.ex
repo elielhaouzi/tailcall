@@ -2,14 +2,15 @@ defmodule Tailcall.Audit.Events do
   @moduledoc """
   The Events context.
   """
+  import Ecto.Query, only: [order_by: 2]
+
   alias Ecto.Multi
 
   alias Tailcall.Repo
 
   alias Tailcall.Audit.Events.{Event, EventQueryable}
 
-  @default_sort_field :id
-  @default_sort_order :desc
+  @default_order_by [desc: :id]
   @default_page_number 1
   @default_page_size 100
 
@@ -17,17 +18,11 @@ defmodule Tailcall.Audit.Events do
     "product.created" => ~w(id)
   }
 
-  defmodule InvalidParameterError do
-    defexception [:message]
-  end
-
   @spec list_events(keyword) :: %{data: [Event.t()], total: integer}
   def list_events(opts \\ []) do
-    sort_field = Keyword.get(opts, :sort_field, @default_sort_field)
-    sort_order = Keyword.get(opts, :sort_order, @default_sort_order)
-
     page_number = Keyword.get(opts, :page_number, @default_page_number)
     page_size = Keyword.get(opts, :page_size, @default_page_size)
+    order_by_fields = list_order_by_fields(opts)
 
     query = event_queryable(opts)
 
@@ -35,36 +30,39 @@ defmodule Tailcall.Audit.Events do
 
     events =
       query
-      |> EventQueryable.sort(%{field: sort_field, order: sort_order})
+      |> order_by(^order_by_fields)
       |> EventQueryable.paginate(page_number, page_size)
       |> Repo.all()
 
-    %{total: count, data: events}
+    %{data: events, total: count}
   end
 
   @doc """
   Returns an audit event struct with pre-filled fields.
   """
-  @spec new(%{:livemode => boolean, :user_id => binary, optional(atom) => any}) :: Event.t()
-  def new(%{livemode: _, user_id: _} = fields) do
+  @spec new_event(%{:livemode => boolean, :user_id => binary, optional(atom) => any}) :: Event.t()
+  def new_event(%{livemode: _, user_id: _} = fields) do
     struct!(Event, fields)
   end
 
-  @spec audit!(Event.t(), binary, map) :: any
-  def audit!(%Event{} = event_schema, type, data) do
+  @spec audit_event!(Event.t(), binary, map) :: any
+  def audit_event!(%Event{} = event_schema, type, data \\ %{}) do
     Repo.insert!(build!(event_schema, type, data))
   end
 
-  def multi(multi, %Event{} = event_schema, type, fun) when is_function(fun, 2) do
+  @spec audit_event_multi(Ecto.Multi.t(), Event.t(), binary, map | function) :: Ecto.Multi.t()
+  def audit_event_multi(multi, event_schema, type, mixed \\ %{})
+
+  def audit_event_multi(multi, %Event{} = event_schema, type, fun) when is_function(fun, 2) do
     Ecto.Multi.run(multi, :audit_event, fn _repo, changes ->
-      {:ok, audit!(fun.(event_schema, changes), type, %{})}
+      {:ok, audit_event!(fun.(event_schema, changes), type, %{})}
     end)
   end
 
-  @spec multi(Ecto.Multi.t(), Event.t(), binary, map) :: Ecto.Multi.t()
-  def multi(multi, %Event{} = event_schema, type, data) when is_binary(type) and is_map(data) do
+  def audit_event_multi(multi, %Event{} = event_schema, type, data)
+      when is_binary(type) and is_map(data) do
     Multi.run(multi, :audit_event, fn _repo, _changes ->
-      {:ok, audit!(event_schema, type, data)}
+      {:ok, audit_event!(event_schema, type, data)}
     end)
   end
 
@@ -115,6 +113,14 @@ defmodule Tailcall.Audit.Events do
 
       _ ->
         changeset
+    end
+  end
+
+  defp list_order_by_fields(opts) do
+    Keyword.get(opts, :order_by_fields, [])
+    |> case do
+      [] -> @default_order_by
+      [_ | _] = order_by_fields -> order_by_fields
     end
   end
 end

@@ -26,6 +26,9 @@ defmodule Tailcall.DataCase do
       import Tailcall.DataCase
 
       import Tailcall.Factory
+
+      import Hammox
+      setup :verify_on_exit!
     end
   end
 

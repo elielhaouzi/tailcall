@@ -94,4 +94,7 @@ jobs:
         run: cat env/ci.env >> $GITHUB_ENV
 
       - name: Run tests
-        run: MIX_ENV=test mix do ecto.reset, test --trace --slowest 10 --cover
+      - run: MIX_ENV=test mix deps.compile
+      - run: MIX_ENV=test mix compile --warnings-as-errors
+      - run: MIX_ENV=test mix do ecto.reset, test mix test --trace --slowest 10 --cover
+      # - run: MIX_ENV=test mix do ecto.reset, test mix test --warnings-as-errors --trace --slowest 10 --cover

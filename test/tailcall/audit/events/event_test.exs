@@ -21,10 +21,10 @@ defmodule Tailcall.Audit.Events.EventTest do
       assert :created_at in changes_keys
       assert :data in changes_keys
       assert :livemode in changes_keys
-      assert :type in changes_keys
       assert :request_id in changes_keys
       assert :resource_id in changes_keys
       assert :resource_type in changes_keys
+      assert :type in changes_keys
       refute :new_key in changes_keys
     end
 
@@ -34,8 +34,8 @@ defmodule Tailcall.Audit.Events.EventTest do
       refute changeset.valid?
       assert %{user_id: ["can't be blank"]} = errors_on(changeset)
       assert %{created_at: ["can't be blank"]} = errors_on(changeset)
-      assert %{livemode: ["can't be blank"]} = errors_on(changeset)
       assert %{data: ["can't be blank"]} = errors_on(changeset)
+      assert %{livemode: ["can't be blank"]} = errors_on(changeset)
       assert %{type: ["can't be blank"]} = errors_on(changeset)
     end
 

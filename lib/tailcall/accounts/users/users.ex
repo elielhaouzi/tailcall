@@ -2,19 +2,19 @@ defmodule Tailcall.Accounts.Users do
   @moduledoc """
   The User context.
   """
+  import Ecto.Query, only: [order_by: 2]
+
   alias Tailcall.Repo
 
   alias Tailcall.Accounts.Users.{User, UserQueryable}
 
-  @default_sort_field :inserted_at
-  @default_sort_order :asc
+  @default_order_by [asc: :inserted_at]
   @default_page_number 1
   @default_page_size 100
 
   @spec list_users(keyword) :: %{data: [User.t()], total: integer}
   def list_users(opts \\ []) do
-    sort_field = Keyword.get(opts, :sort_field, @default_sort_field)
-    sort_order = Keyword.get(opts, :sort_order, @default_sort_order)
+    order_by_fields = list_order_by_fields(opts)
 
     page_number = Keyword.get(opts, :page_number, @default_page_number)
     page_size = Keyword.get(opts, :page_size, @default_page_size)
@@ -25,7 +25,7 @@ defmodule Tailcall.Accounts.Users do
 
     users =
       query
-      |> UserQueryable.sort(%{field: sort_field, order: sort_order})
+      |> order_by(^order_by_fields)
       |> UserQueryable.paginate(page_number, page_size)
       |> Repo.all()
 
@@ -76,5 +76,13 @@ defmodule Tailcall.Accounts.Users do
 
     UserQueryable.queryable()
     |> UserQueryable.filter(filters)
+  end
+
+  defp list_order_by_fields(opts) do
+    Keyword.get(opts, :order_by_fields, [])
+    |> case do
+      [] -> @default_order_by
+      [_ | _] = order_by_fields -> order_by_fields
+    end
   end
 end
