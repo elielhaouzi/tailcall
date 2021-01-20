@@ -16,19 +16,9 @@ defmodule Tailcall.Factory.Accounts.ApiKey do
         |> type_publishable()
       end
 
-      def type_secret(%ApiKey{} = api_key) do
-        api_key
-        |> Map.merge(%{type: "secret"})
-      end
-
-      def type_publishable(%ApiKey{} = api_key) do
-        api_key
-        |> Map.merge(%{type: "publishable"})
-      end
-
-      def make_expired(%ApiKey{} = api_key) do
-        %{api_key | expired_at: utc_now()}
-      end
+      def type_secret(%ApiKey{} = api_key), do: %{api_key | type: "secret"}
+      def type_publishable(%ApiKey{} = api_key), do: %{api_key | type: "publishable"}
+      def make_expired(%ApiKey{} = api_key), do: %{api_key | expired_at: utc_now()}
 
       def build(:api_key_usage) do
         %ApiKeyUsage{

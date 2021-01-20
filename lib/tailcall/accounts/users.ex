@@ -8,7 +8,7 @@ defmodule Tailcall.Accounts.Users do
 
   alias Tailcall.Accounts.Users.{User, UserQueryable}
 
-  @default_order_by [asc: :inserted_at]
+  @default_order_by [asc: :id]
   @default_page_number 1
   @default_page_size 100
 

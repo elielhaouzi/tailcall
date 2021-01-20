@@ -10,6 +10,16 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKeyUsage do
 
   alias Tailcall.Accounts.ApiKeys.ApiKey
 
+  @type t :: %__MODULE__{
+          ip_address: binary | nil,
+          request_id: binary | nil,
+          used_at: DateTime.t(),
+          id: binary,
+          inserted_at: DateTime.t(),
+          object: binary,
+          updated_at: DateTime.t()
+        }
+
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "aku", autogenerate: true}
   schema "api_key_usages" do
     field(:object, :string, default: "api_key_usage")

@@ -5,6 +5,25 @@ defmodule Tailcall.Billing.TaxRates.TaxRate do
 
   alias Tailcall.Accounts.Users.User
 
+  @type t :: %__MODULE__{
+          active: boolean,
+          created_at: DateTime.t(),
+          description: binary | nil,
+          deleted_at: DateTime.t() | nil,
+          display_name: binary,
+          id: binary,
+          inserted_at: DateTime.t(),
+          inclusive: boolean,
+          jurisdiction: binary | nil,
+          livemode: boolean,
+          metadata: map | nil,
+          percentage: Decimal.t(),
+          object: binary,
+          updated_at: DateTime.t(),
+          user: User.t(),
+          user_id: binary
+        }
+
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "txr", autogenerate: true}
   schema "tax_rates" do
     field(:object, :string, default: "tax_rate")
@@ -62,5 +81,6 @@ defmodule Tailcall.Billing.TaxRates.TaxRate do
     tax_rate
     |> cast(attrs, [:deleted_at])
     |> validate_required([:deleted_at])
+    |> AntlUtilsEcto.Changeset.validate_datetime_gte(:deleted_at, :created_at)
   end
 end

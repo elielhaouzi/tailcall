@@ -16,7 +16,7 @@ defmodule Tailcall.Accounts.Users.User do
           email: binary,
           id: binary,
           inserted_at: DateTime.t(),
-          name: binary,
+          name: binary | nil,
           object: binary,
           performer_id: integer,
           updated_at: DateTime.t()

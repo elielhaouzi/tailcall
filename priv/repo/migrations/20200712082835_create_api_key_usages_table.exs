@@ -3,7 +3,7 @@ defmodule Accounts.Repo.Migrations.CreateApiKeyUsagesTable do
 
   def change do
     create table(:api_key_usages) do
-      add(:api_key_id, references(:api_keys, on_delete: :delete_all), null: false)
+      add(:api_key_id, references(:api_keys, on_delete: :nothing), null: false)
 
       add(:ip_address, :string, null: true)
       add(:request_id, :string, null: true)
