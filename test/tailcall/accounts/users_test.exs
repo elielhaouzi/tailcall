@@ -12,6 +12,14 @@ defmodule Tailcall.Accounts.UsersTest do
       assert %{total: 1, data: [%{id: ^user_id}]} = Users.list_users()
     end
 
+    test "order_by" do
+      %{id: id1} = insert!(:user)
+      %{id: id2} = insert!(:user)
+
+      assert %{data: [%{id: ^id1}, %{id: ^id2}]} = Users.list_users()
+      assert %{data: [%{id: ^id2}, %{id: ^id1}]} = Users.list_users(order_by_fields: [desc: :id])
+    end
+
     test "filters" do
       user = insert!(:user)
 

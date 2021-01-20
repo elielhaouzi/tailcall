@@ -20,30 +20,11 @@ defmodule Tailcall.Factory.Billing.TaxRate do
         |> make_inclusive()
       end
 
-      def make_active(%TaxRate{} = tax_rate) do
-        tax_rate
-        |> Map.merge(%{active: true})
-      end
-
-      def make_inactive(%TaxRate{} = tax_rate) do
-        tax_rate
-        |> Map.merge(%{active: false})
-      end
-
-      def make_inclusive(%TaxRate{} = tax_rate) do
-        tax_rate
-        |> Map.merge(%{inclusive: true})
-      end
-
-      def make_exclusive(%TaxRate{} = tax_rate) do
-        tax_rate
-        |> Map.merge(%{inclusive: false})
-      end
-
-      def make_deleted(%TaxRate{} = tax_rate) do
-        tax_rate
-        |> Map.merge(%{deleted_at: utc_now()})
-      end
+      def make_active(%TaxRate{} = tax_rate), do: %{tax_rate | active: true}
+      def make_inactive(%TaxRate{} = tax_rate), do: %{tax_rate | active: false}
+      def make_inclusive(%TaxRate{} = tax_rate), do: %{tax_rate | inclusive: true}
+      def make_exclusive(%TaxRate{} = tax_rate), do: %{tax_rate | inclusive: false}
+      def make_deleted(%TaxRate{} = tax_rate), do: %{tax_rate | deleted_at: utc_now()}
     end
   end
 end

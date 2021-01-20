@@ -5,6 +5,22 @@ defmodule Tailcall.Audit.Events.Event do
 
   alias Tailcall.Accounts.Users.User
 
+  @type t :: %__MODULE__{
+          api_version: binary | nil,
+          created_at: DateTime.t(),
+          data: map,
+          livemode: boolean,
+          request_id: binary | nil,
+          resource_id: binary | nil,
+          resource_type: binary | nil,
+          type: binary,
+          id: binary,
+          inserted_at: DateTime.t(),
+          updated_at: DateTime.t(),
+          user: User.t(),
+          user_id: binary
+        }
+
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "evt", autogenerate: true}
   schema "events" do
     field(:object, :string, default: "event")

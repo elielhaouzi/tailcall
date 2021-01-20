@@ -14,8 +14,8 @@ defmodule Tailcall.Factory do
   # use Tailcall.Factory.Coupon
   # use Tailcall.Factory.Discount
 
-  # use Tailcall.Factory.Product
-  # use Tailcall.Factory.Price
+  use Tailcall.Factory.Billing.Product
+  use Tailcall.Factory.Billing.Price
   # use Tailcall.Factory.Subscription
 
   # use Tailcall.Factory.Invoice
@@ -64,11 +64,11 @@ defmodule Tailcall.Factory do
     factory_name |> build(attributes) |> insert!()
   end
 
+  @spec insert!(atom | tuple | struct) :: struct
   def insert!(factory_name) when is_atom(factory_name) or is_tuple(factory_name) do
     factory_name |> build([]) |> insert!()
   end
 
-  @spec insert!(struct) :: struct
   def insert!(schema) when is_struct(schema) do
     schema |> Repo.insert!()
   end

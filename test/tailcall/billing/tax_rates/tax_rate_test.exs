@@ -27,20 +27,6 @@ defmodule Tailcall.Billing.TaxRates.TaxRateTest do
       refute :new_key in changes_keys
     end
 
-    test "when required params are missing, returns an invalid changeset" do
-      changeset = TaxRate.create_changeset(%TaxRate{}, %{active: nil})
-
-      refute changeset.valid?
-      assert length(changeset.errors) == 7
-      assert %{user_id: ["can't be blank"]} = errors_on(changeset)
-      assert %{active: ["can't be blank"]} = errors_on(changeset)
-      assert %{created_at: ["can't be blank"]} = errors_on(changeset)
-      assert %{display_name: ["can't be blank"]} = errors_on(changeset)
-      assert %{inclusive: ["can't be blank"]} = errors_on(changeset)
-      assert %{livemode: ["can't be blank"]} = errors_on(changeset)
-      assert %{percentage: ["can't be blank"]} = errors_on(changeset)
-    end
-
     test "when all params are valid, returns an valid changeset" do
       tax_rate_params = params_for(:tax_rate)
 
@@ -59,6 +45,20 @@ defmodule Tailcall.Billing.TaxRates.TaxRateTest do
 
       assert get_field(changeset, :percentage) ==
                Decimal.new(to_string(tax_rate_params.percentage))
+    end
+
+    test "when required params are missing, returns an invalid changeset" do
+      changeset = TaxRate.create_changeset(%TaxRate{}, %{active: nil})
+
+      refute changeset.valid?
+      assert length(changeset.errors) == 7
+      assert %{user_id: ["can't be blank"]} = errors_on(changeset)
+      assert %{active: ["can't be blank"]} = errors_on(changeset)
+      assert %{created_at: ["can't be blank"]} = errors_on(changeset)
+      assert %{display_name: ["can't be blank"]} = errors_on(changeset)
+      assert %{inclusive: ["can't be blank"]} = errors_on(changeset)
+      assert %{livemode: ["can't be blank"]} = errors_on(changeset)
+      assert %{percentage: ["can't be blank"]} = errors_on(changeset)
     end
   end
 

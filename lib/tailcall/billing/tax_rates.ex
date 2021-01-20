@@ -16,7 +16,7 @@ defmodule Tailcall.Billing.TaxRates do
   end
 
   @spec get_tax_rate(binary) :: TaxRate.t() | nil
-  def get_tax_rate(id) do
+  def get_tax_rate(id) when is_binary(id) do
     TaxRate
     |> Repo.get(id)
   end
@@ -31,9 +31,9 @@ defmodule Tailcall.Billing.TaxRates do
 
   @spec delete_tax_rate(TaxRate.t(), map()) ::
           {:ok, TaxRate.t()} | {:error, Ecto.Changeset.t()}
-  def delete_tax_rate(%TaxRate{deleted_at: nil} = tax_rate, attrs) when is_map(attrs) do
+  def delete_tax_rate(%TaxRate{deleted_at: nil} = tax_rate, %DateTime{} = delete_at) do
     tax_rate
-    |> TaxRate.delete_changeset(attrs)
+    |> TaxRate.delete_changeset(%{deleted_at: delete_at})
     |> Repo.update()
   end
 

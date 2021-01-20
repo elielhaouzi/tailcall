@@ -25,14 +25,14 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKey do
           expired_at: DateTime.t() | nil,
           id: binary,
           inserted_at: DateTime.t(),
-          livemode: binary,
+          livemode: boolean,
           last_used_ip_address: binary | nil,
           last_used_at: DateTime.t() | nil,
           object: binary,
           secret: binary,
+          updated_at: DateTime.t(),
           user: User.t(),
-          user_id: binary,
-          updated_at: DateTime.t()
+          user_id: binary
         }
 
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "ak", autogenerate: true}
@@ -44,7 +44,7 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKey do
     field(:created_at, :utc_datetime)
     field(:expired_at, :utc_datetime)
     field(:livemode, :boolean)
-    field(:last_used_ip_address, Tailcall.Extensions.Ecto.IPAddress, virtual: true)
+    field(:last_used_ip_address, Tailcall.Extensions.Ecto.Types.IPAddress, virtual: true)
     field(:last_used_at, :utc_datetime, virtual: true)
     field(:secret, :string)
     field(:type, :string)

@@ -32,20 +32,25 @@ defmodule Tailcall.Billing.TaxRatesTest do
   end
 
   describe "get_tax_rate/1" do
-    test "when tax_rate does not exist, returns nil" do
-      assert is_nil(TaxRates.get_tax_rate(shortcode_id()))
+    test "when tax_rate exists, returns the tax_rate" do
+      %{id: id} = insert!(:tax_rate)
+
+      assert %TaxRate{id: ^id} = TaxRates.get_tax_rate(id)
     end
 
-    test "when tax_rate exists, returns the tax_rate" do
-      tax_rate_factory = insert!(:tax_rate)
-
-      tax_rate = TaxRates.get_tax_rate(tax_rate_factory.id)
-      assert %TaxRate{} = tax_rate
-      assert tax_rate.id == tax_rate_factory.id
+    test "when tax_rate does not exist, returns nil" do
+      assert is_nil(TaxRates.get_tax_rate(shortcode_id()))
     end
   end
 
   describe "update_tax_rate/2" do
+    test "when data is valid, update the tax_rate" do
+      tax_rate = build(:tax_rate) |> make_active() |> insert!()
+
+      {:ok, %TaxRate{} = tax_rate} = TaxRates.update_tax_rate(tax_rate, %{active: false})
+      assert tax_rate.active == false
+    end
+
     test "when tax_rate is soft deleted, raise a FunctionClauseError" do
       tax_rate = build(:tax_rate) |> make_deleted() |> insert!()
 
@@ -53,16 +58,17 @@ defmodule Tailcall.Billing.TaxRatesTest do
         TaxRates.update_tax_rate(tax_rate, %{active: false})
       end
     end
-
-    test "when data is valid, update the tax_rate" do
-      tax_rate = build(:tax_rate) |> make_active() |> insert!()
-
-      {:ok, %TaxRate{} = tax_rate} = TaxRates.update_tax_rate(tax_rate, %{active: false})
-      assert tax_rate.active == false
-    end
   end
 
   describe "delete_tax_rate/2" do
+    test "when data is valid, delete the tax_rate" do
+      tax_rate = insert!(:tax_rate)
+      delete_at = utc_now()
+
+      {:ok, %TaxRate{} = tax_rate} = TaxRates.delete_tax_rate(tax_rate, delete_at)
+      assert tax_rate.deleted_at == delete_at
+    end
+
     test "when tax_rate is soft deleted, raise a FunctionClauseError" do
       tax_rate = build(:tax_rate) |> make_deleted() |> insert!()
 
@@ -71,12 +77,14 @@ defmodule Tailcall.Billing.TaxRatesTest do
       end
     end
 
-    test "when data is valid, delete the tax_rate" do
-      tax_rate = build(:tax_rate) |> make_active() |> insert!()
-      datetime = utc_now()
+    test "when deleted_at is before created_at, returns an ecto changeset error" do
+      tax_rate = insert!(:tax_rate)
 
-      {:ok, %TaxRate{} = tax_rate} = TaxRates.delete_tax_rate(tax_rate, %{deleted_at: datetime})
-      assert tax_rate.deleted_at == datetime
+      assert {:error, changeset} =
+               TaxRates.delete_tax_rate(tax_rate, tax_rate.created_at |> add(-1200))
+
+      refute changeset.valid?
+      assert %{deleted_at: ["should be after or equal to created_at"]} = errors_on(changeset)
     end
   end
 end

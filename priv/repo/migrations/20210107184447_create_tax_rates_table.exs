@@ -22,7 +22,8 @@ defmodule Tailcall.Repo.Migrations.CreateTaxRatesTable do
 
     create(index(:tax_rates, [:user_id]))
     create(index(:tax_rates, [:active]))
-    create(index(:tax_rates, [:livemode]))
+    create(index(:tax_rates, [:created_at]))
     create(index(:tax_rates, [:deleted_at]))
+    create(index(:tax_rates, [:livemode]))
   end
 end

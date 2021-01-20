@@ -1,4 +1,4 @@
-defmodule Tailcall.Extensions.Ecto.IPAddress do
+defmodule Tailcall.Extensions.Ecto.Types.IPAddress do
   use Ecto.Type
 
   @impl true
