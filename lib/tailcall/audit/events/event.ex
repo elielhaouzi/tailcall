@@ -39,7 +39,7 @@ defmodule Tailcall.Audit.Events.Event do
     timestamps(type: :utc_datetime)
   end
 
-  @spec changeset(Event.t(), map()) :: Ecto.Changeset.t()
+  @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(%__MODULE__{} = event, attrs) when is_map(attrs) do
     event
     |> cast(attrs, [

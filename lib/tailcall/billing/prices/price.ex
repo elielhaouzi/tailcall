@@ -68,7 +68,7 @@ defmodule Tailcall.Billing.Prices.Price do
     field(:created_at, :utc_datetime)
     field(:currency, :string)
     field(:livemode, :boolean)
-    field(:metadata, :map)
+    field(:metadata, :map, default: %{})
     field(:nickname, :string)
     field(:recurring_aggregate_usage, :string)
     field(:recurring_interval, :string)
