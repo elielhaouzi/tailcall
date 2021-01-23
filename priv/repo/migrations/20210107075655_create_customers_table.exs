@@ -3,7 +3,7 @@ defmodule Tailcall.Repo.Migrations.CreateCustomersTable do
 
   def change do
     create table(:customers) do
-      add(:user_id, :bigint, null: false)
+      add(:account_id, :bigint, null: false)
 
       add(:address, :map, null: true)
       add(:balance, :integer, null: false)

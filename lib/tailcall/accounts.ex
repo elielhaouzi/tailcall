@@ -2,8 +2,6 @@ defmodule Tailcall.Accounts do
   @moduledoc """
   Accounts context
   """
-  @behaviour Tailcall.Accounts.Behaviour
-
   use Annacl
 
   alias Tailcall.Accounts.ApiKeys
@@ -11,7 +9,6 @@ defmodule Tailcall.Accounts do
   alias Tailcall.Accounts.Users
   alias Tailcall.Accounts.Users.User
 
-  @impl Tailcall.Accounts.Behaviour
   @spec authenticate(map) ::
           {:ok, %{api_key: map, user: map}} | {:error, :unauthorized | :forbidden}
   def authenticate(%{"api_key" => secret} = attrs) when is_binary(secret) do
@@ -35,35 +32,27 @@ defmodule Tailcall.Accounts do
 
   def authenticate(%{"api_key" => _key}), do: {:error, :unauthorized}
 
-  @impl Tailcall.Accounts.Behaviour
   @spec livemode?(ApiKey.t()) :: boolean
   def livemode?(%ApiKey{livemode: livemode}), do: livemode
 
-  @impl Tailcall.Accounts.Behaviour
   @spec list_users(keyword) :: %{data: [User.t()], total: integer}
   defdelegate list_users(opts \\ []), to: Users
 
-  @impl Tailcall.Accounts.Behaviour
   @spec create_user(map) :: {:ok, User.t()} | {:error, Ecto.Changeset.t()}
   defdelegate create_user(attrs), to: Users
 
-  @impl Tailcall.Accounts.Behaviour
   @spec get_user(binary) :: User.t() | nil
   defdelegate get_user(id), to: Users
 
-  @impl Tailcall.Accounts.Behaviour
   @spec get_user!(binary) :: User.t()
   defdelegate get_user!(id), to: Users
 
-  @impl Tailcall.Accounts.Behaviour
   @spec get_user_by(keyword) :: User.t() | nil
   defdelegate get_user_by(filter), to: Users
 
-  @impl Tailcall.Accounts.Behaviour
   @spec user_exists?(binary) :: boolean
   defdelegate user_exists?(id), to: Users
 
-  @impl Tailcall.Accounts.Behaviour
   @spec update_user(User.t(), map) :: {:ok, User.t()} | {:error, Ecto.Changeset.t()}
   defdelegate update_user(user, attrs), to: Users
 

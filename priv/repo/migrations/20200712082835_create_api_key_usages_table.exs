@@ -10,7 +10,7 @@ defmodule Accounts.Repo.Migrations.CreateApiKeyUsagesTable do
       add(:used_at, :utc_datetime_usec, null: false)
 
       timestamps()
-      add(:object, :binary, default: "api_key_usage")
+      add(:object, :string, default: "api_key_usage")
     end
 
     create(index(:api_key_usages, [:request_id]))

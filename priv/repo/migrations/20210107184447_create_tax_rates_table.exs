@@ -3,7 +3,7 @@ defmodule Tailcall.Repo.Migrations.CreateTaxRatesTable do
 
   def change do
     create table(:tax_rates) do
-      add(:user_id, :bigint, null: false)
+      add(:account_id, :bigint, null: false)
 
       add(:active, :boolean, null: false)
       add(:created_at, :utc_datetime, null: false)

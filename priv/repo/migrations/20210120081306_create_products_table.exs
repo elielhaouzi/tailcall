@@ -3,7 +3,7 @@ defmodule Tailcall.Repo.Migrations.CreateProductsTable do
 
   def change do
     create table(:products) do
-      add(:user_id, :bigint, null: false)
+      add(:account_id, :bigint, null: false)
 
       add(:active, :boolean, null: false)
       add(:caption, :string, null: true)
