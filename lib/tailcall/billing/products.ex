@@ -73,19 +73,19 @@ defmodule Tailcall.Billing.Products do
   defp validate_create_changes(changeset) do
     Ecto.Changeset.prepare_changes(changeset, fn changeset ->
       changeset
-      |> assoc_constraint_user()
+      |> assoc_constraint_account()
     end)
   end
 
-  defp assoc_constraint_user(%Ecto.Changeset{valid?: false} = changeset), do: changeset
+  defp assoc_constraint_account(%Ecto.Changeset{valid?: false} = changeset), do: changeset
 
-  defp assoc_constraint_user(%Ecto.Changeset{valid?: true} = changeset) do
-    user_id = Ecto.Changeset.get_field(changeset, :user_id)
+  defp assoc_constraint_account(%Ecto.Changeset{valid?: true} = changeset) do
+    account_id = Ecto.Changeset.get_field(changeset, :account_id)
 
-    if Accounts.user_exists?(user_id) do
+    if Accounts.account_exists?(account_id) do
       changeset
     else
-      changeset |> Ecto.Changeset.add_error(:user, "does not exist")
+      changeset |> Ecto.Changeset.add_error(:account, "does not exist")
     end
   end
 

@@ -6,14 +6,15 @@ defmodule Tailcall.Billing.Products.ProductTest do
 
   describe "create_changeset/2" do
     test "only permitted_keys are casted" do
-      product_params = build(:product) |> make_inactive() |> params_for()
+      product_params =
+        build(:product, metadata: %{key: "value"}) |> make_inactive() |> params_for()
 
       changeset =
         Product.create_changeset(%Product{}, Map.merge(product_params, %{new_key: "value"}))
 
       changes_keys = changeset.changes |> Map.keys()
 
-      assert :user_id in changes_keys
+      assert :account_id in changes_keys
       assert :active in changes_keys
       assert :caption in changes_keys
       assert :created_at in changes_keys
@@ -35,7 +36,7 @@ defmodule Tailcall.Billing.Products.ProductTest do
       changeset = Product.create_changeset(%Product{}, product_params)
 
       assert changeset.valid?
-      assert get_field(changeset, :user_id) == product_params.user_id
+      assert get_field(changeset, :account_id) == product_params.account_id
       assert get_field(changeset, :active) == product_params.active
       assert get_field(changeset, :caption) == product_params.caption
       assert get_field(changeset, :created_at) == product_params.created_at
@@ -54,7 +55,7 @@ defmodule Tailcall.Billing.Products.ProductTest do
 
       refute changeset.valid?
       assert length(changeset.errors) == 6
-      assert %{user_id: ["can't be blank"]} = errors_on(changeset)
+      assert %{account_id: ["can't be blank"]} = errors_on(changeset)
       assert %{active: ["can't be blank"]} = errors_on(changeset)
       assert %{created_at: ["can't be blank"]} = errors_on(changeset)
       assert %{livemode: ["can't be blank"]} = errors_on(changeset)
@@ -84,7 +85,7 @@ defmodule Tailcall.Billing.Products.ProductTest do
 
       changes_keys = changeset.changes |> Map.keys()
 
-      refute :user_id in changes_keys
+      refute :account_id in changes_keys
       assert :active in changes_keys
       assert :caption in changes_keys
       refute :created_at in changes_keys

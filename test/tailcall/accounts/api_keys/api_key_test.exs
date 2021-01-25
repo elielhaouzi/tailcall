@@ -14,7 +14,7 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKeyTest do
 
       changes_keys = changeset.changes |> Map.keys()
 
-      assert :user_id in changes_keys
+      assert :account_id in changes_keys
       assert :created_at in changes_keys
       assert :expired_at in changes_keys
       assert :livemode in changes_keys
@@ -28,7 +28,7 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKeyTest do
       changeset = ApiKey.create_changeset(%ApiKey{}, %{})
 
       refute changeset.valid?
-      assert %{user_id: ["can't be blank"]} = errors_on(changeset)
+      assert %{account_id: ["can't be blank"]} = errors_on(changeset)
       assert %{created_at: ["can't be blank"]} = errors_on(changeset)
       assert %{livemode: ["can't be blank"]} = errors_on(changeset)
       assert %{secret: ["can't be blank"]} = errors_on(changeset)
@@ -59,7 +59,7 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKeyTest do
       changeset = ApiKey.create_changeset(%ApiKey{}, api_key_params)
 
       assert changeset.valid?
-      assert get_field(changeset, :user_id) == api_key_params.user_id
+      assert get_field(changeset, :account_id) == api_key_params.account_id
       assert get_field(changeset, :created_at) == api_key_params.created_at
       assert get_field(changeset, :expired_at) == api_key_params.expired_at
       assert get_field(changeset, :livemode) == api_key_params.livemode
@@ -78,7 +78,7 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKeyTest do
 
       changes_keys = changeset.changes |> Map.keys()
 
-      refute :user_id in changes_keys
+      refute :account_id in changes_keys
       refute :created_at in changes_keys
       assert :expired_at in changes_keys
       refute :livemode in changes_keys

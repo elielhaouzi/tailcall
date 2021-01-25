@@ -28,6 +28,8 @@ defmodule Tailcall.Repo.Migrations.CreateCustomersTable do
       add(:object, :string, default: "customer")
     end
 
+    create(index(:customers, [:account_id]))
+
     create(index(:customers, [:created_at]))
     create(index(:customers, [:delinquent]))
     create(index(:customers, [:email]))
@@ -35,6 +37,5 @@ defmodule Tailcall.Repo.Migrations.CreateCustomersTable do
     create(index(:customers, [:phone]))
     create(index(:customers, [:deleted_at]))
     create(index(:customers, [:livemode]))
-
   end
 end

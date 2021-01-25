@@ -5,7 +5,6 @@ defmodule Accounts.Repo.Migrations.CreateUsers do
     create table(:users) do
       add(:created_at, :utc_datetime, null: false)
       add(:email, :string, null: false)
-      add(:is_primary_user, :boolean, null: false)
       add(:name, :string, null: true)
       add(:performer_id, references(:annacl_performers, on_delete: :nothing), null: false)
 

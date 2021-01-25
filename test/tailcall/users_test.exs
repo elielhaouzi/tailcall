@@ -1,9 +1,9 @@
-defmodule Tailcall.Accounts.UsersTest do
+defmodule Tailcall.UsersTest do
   use ExUnit.Case, async: true
   use Tailcall.DataCase
 
-  alias Tailcall.Accounts.Users
-  alias Tailcall.Accounts.Users.User
+  alias Tailcall.Users
+  alias Tailcall.Users.User
 
   describe "list_users/1" do
     test "list_users" do
@@ -27,7 +27,8 @@ defmodule Tailcall.Accounts.UsersTest do
         [id: user.id],
         [id: [user.id]],
         [email: user.email],
-        [name: user.name]
+        [name: user.name],
+        [ongoing_at: user.created_at]
       ]
       |> Enum.each(fn filter ->
         assert %{total: 1, data: [_user]} = Users.list_users(filters: filter)
@@ -37,7 +38,9 @@ defmodule Tailcall.Accounts.UsersTest do
         [id: shortcode_id()],
         [id: [shortcode_id()]],
         [email: "non existing email"],
-        [name: "non existing name"]
+        [name: "non existing name"],
+        [ongoing_at: price.created_at |> add(-1200)],
+        [deleted_at: price.created_at |> add(-1200)]
       ]
       |> Enum.each(fn filter ->
         assert %{total: 0, data: []} = Users.list_users(filters: filter)

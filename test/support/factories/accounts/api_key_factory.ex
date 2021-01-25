@@ -4,10 +4,10 @@ defmodule Tailcall.Factory.Accounts.ApiKey do
   defmacro __using__(_opts) do
     quote do
       def build(:api_key) do
-        %{id: user_id} = insert!(:user)
+        %{id: account_id} = insert!(:account)
 
         %ApiKey{
-          user_id: user_id,
+          account_id: account_id,
           created_at: utc_now(),
           livemode: false,
           secret: Tailcall.Accounts.ApiKeys.generate_secret_key("secret", false)

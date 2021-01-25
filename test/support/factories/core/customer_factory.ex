@@ -6,17 +6,19 @@ defmodule Tailcall.Factory.Core.Customers.Customer do
   defmacro __using__(_opts) do
     quote do
       def build(:customer) do
-        user = insert!(:user)
+        account = insert!(:account)
 
         %Customer{
-          user_id: user.id,
+          account_id: account.id,
+          currency: "ils",
           created_at: utc_now(),
           description: "description_#{System.unique_integer()}",
           email: "email_#{System.unique_integer()}",
-          invoice_prefix: "invoice_prefix_#{System.unique_integer([:positive])}",
-          invoice_settings: %{},
+          invoice_prefix: "invoice_prefix_#{System.unique_integer([])}",
+          # invoice_settings: build(:invoice_settings),
           livemode: false,
-          email: "name_#{System.unique_integer()}",
+          name: "name_#{System.unique_integer()}",
+          next_invoice_sequence: 1,
           phone: "phone_#{System.unique_integer()}"
         }
       end

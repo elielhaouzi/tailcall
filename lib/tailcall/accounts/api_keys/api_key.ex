@@ -11,7 +11,7 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKey do
       validate_required: 2
     ]
 
-  alias Tailcall.Accounts.Users.User
+  alias Tailcall.Accounts.Account
 
   @buffer_time_in_seconds 100
   @key_min_length 35
@@ -21,6 +21,8 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKey do
   @max_expiration_in_days 7
 
   @type t :: %__MODULE__{
+          account: Account.t(),
+          account_id: binary,
           created_at: DateTime.t(),
           expired_at: DateTime.t() | nil,
           id: binary,
@@ -30,16 +32,14 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKey do
           last_used_at: DateTime.t() | nil,
           object: binary,
           secret: binary,
-          updated_at: DateTime.t(),
-          user: User.t(),
-          user_id: binary
+          updated_at: DateTime.t()
         }
 
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "ak", autogenerate: true}
   schema "api_keys" do
     field(:object, :string, default: "api_key")
 
-    belongs_to(:user, User, type: Shortcode.Ecto.ID, prefix: "usr")
+    belongs_to(:account, Account, type: Shortcode.Ecto.ID, prefix: "acct")
 
     field(:created_at, :utc_datetime)
     field(:expired_at, :utc_datetime)
@@ -55,12 +55,12 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKey do
   @spec create_changeset(ApiKey.t(), map()) :: Ecto.Changeset.t()
   def create_changeset(%__MODULE__{} = api_key, attrs) when is_map(attrs) do
     api_key
-    |> cast(attrs, [:user_id, :created_at, :expired_at, :livemode, :secret, :type])
-    |> validate_required([:user_id, :created_at, :livemode, :secret, :type])
+    |> cast(attrs, [:account_id, :created_at, :expired_at, :livemode, :secret, :type])
+    |> validate_required([:account_id, :created_at, :livemode, :secret, :type])
     |> validate_length(:secret, min: @key_min_length, max: @key_max_length)
     |> validate_inclusion(:type, @types)
     |> unique_constraint(:secret)
-    |> assoc_constraint(:user)
+    |> assoc_constraint(:account)
   end
 
   @spec remove_changeset(ApiKey.t(), map()) :: Ecto.Changeset.t()

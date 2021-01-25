@@ -18,7 +18,7 @@ defmodule Tailcall.Repo.Migrations.CreateEventsTable do
       add(:object, :string, default: "event")
     end
 
-    create(index(:events, [:user_id]))
+    create(index(:events, [:account_id]))
 
     create(index(:events, [:created_at]))
     create(index(:events, [:livemode]))

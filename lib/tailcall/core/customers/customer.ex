@@ -2,12 +2,14 @@ defmodule Tailcall.Core.Customers.Customer do
   use Ecto.Schema
 
   import Ecto.Changeset,
-    only: [cast: 3, validate_inclusion: 3, validate_number: 3, validate_required: 2]
+    only: [cast: 3, put_embed: 3, validate_inclusion: 3, validate_number: 3, validate_required: 2]
 
-  alias Tailcall.Accounts.Users.User
-  alias Tailcall.Core.Customers.InvoiceSettings
+  alias Tailcall.Accounts.Account
+  # alias Tailcall.Core.Customers.InvoiceSettings
 
   @type t :: %__MODULE__{
+          account: Account.t(),
+          account_id: binary,
           balance: integer,
           currency: binary | nil,
           created_at: DateTime.t(),
@@ -27,16 +29,14 @@ defmodule Tailcall.Core.Customers.Customer do
           phone: binary,
           preferred_locales: [binary],
           tax_exempt: binary,
-          updated_at: DateTime.t(),
-          user: User.t(),
-          user_id: binary
+          updated_at: DateTime.t()
         }
 
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "cus", autogenerate: true}
   schema "customers" do
     field(:object, :string, default: "customers")
 
-    belongs_to(:user, User, type: Shortcode.Ecto.ID, prefix: "usr")
+    belongs_to(:account, Account, type: Shortcode.Ecto.ID, prefix: "acct")
 
     field(:balance, :integer, default: 0)
     field(:currency, :string)
@@ -65,12 +65,11 @@ defmodule Tailcall.Core.Customers.Customer do
   def create_changeset(%__MODULE__{} = customer, attrs) when is_map(attrs) do
     customer
     |> cast(attrs, [
-      :user_id,
+      :account_id,
       :balance,
       :description,
       :email,
       :invoice_prefix,
-      :invoice_settings,
       :livemode,
       :metadata,
       :name,
@@ -79,7 +78,8 @@ defmodule Tailcall.Core.Customers.Customer do
       :preferred_locales,
       :tax_exempt
     ])
-    |> validate_required([:user_id, :created_at, :balance, :livemode, :next_invoice_sequence])
+    |> put_embed(:invoice_settings, %{})
+    |> validate_required([:account_id, :created_at, :balance, :livemode, :next_invoice_sequence])
     |> validate_number(:next_invoice_sequence, greater_than_or_equal_to: 1)
     |> validate_inclusion(:tax_exempt, Map.values(tax_exempts()))
   end
@@ -93,7 +93,6 @@ defmodule Tailcall.Core.Customers.Customer do
       :description,
       :email,
       :invoice_prefix,
-      :invoice_settings,
       :name,
       :next_invoice_sequence,
       :phone,

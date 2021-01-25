@@ -29,7 +29,7 @@ defmodule Tailcall.Repo.Migrations.CreatePricesTable do
       add(:object, :string, default: "price")
     end
 
-    create(index(:prices, [:user_id]))
+    create(index(:prices, [:account_id]))
 
     create(index(:prices, [:active]))
     create(index(:prices, [:created_at]))

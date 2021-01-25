@@ -22,7 +22,7 @@ defmodule Tailcall.Repo.Migrations.CreateProductsTable do
       add(:object, :string, default: "product")
     end
 
-    create(index(:products, [:user_id]))
+    create(index(:products, [:account_id]))
 
     create(index(:products, [:active]))
     create(index(:products, [:created_at]))

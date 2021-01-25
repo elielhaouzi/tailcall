@@ -28,7 +28,7 @@ defmodule Tailcall.Billing.ProductsTest do
       [
         [id: product.id],
         [id: [product.id]],
-        [user_id: product.user_id],
+        [account_id: product.account_id],
         [active: product.active],
         [livemode: product.livemode],
         [name: product.name],
@@ -41,7 +41,7 @@ defmodule Tailcall.Billing.ProductsTest do
 
       [
         [id: shortcode_id()],
-        [user_id: shortcode_id()],
+        [account_id: shortcode_id()],
         [active: !product.active],
         [livemode: !product.livemode],
         [name: "name"],
@@ -69,13 +69,13 @@ defmodule Tailcall.Billing.ProductsTest do
       refute changeset.valid?
     end
 
-    test "when user does not exist, returns an error tuple with an invalid changeset" do
-      product_params = params_for(:product, user_id: shortcode_id())
+    test "when account does not exist, returns an error tuple with an invalid changeset" do
+      product_params = params_for(:product, account_id: shortcode_id())
 
       assert {:error, changeset} = Products.create_product(product_params)
 
       refute changeset.valid?
-      assert %{user: ["does not exist"]} = errors_on(changeset)
+      assert %{account: ["does not exist"]} = errors_on(changeset)
     end
   end
 

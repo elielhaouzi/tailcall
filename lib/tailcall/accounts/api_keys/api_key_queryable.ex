@@ -14,16 +14,16 @@ defmodule Tailcall.Accounts.ApiKeys.ApiKeyQueryable do
     end)
   end
 
-  defp with_preload(queryable, :user, _filters) do
-    queryable |> preload_user()
+  defp with_preload(queryable, :account, _filters) do
+    queryable |> preload_account()
   end
 
   defp with_preload(queryable, :last_usage, _filters) do
     queryable |> preload_last_usage()
   end
 
-  defp preload_user(queryable) do
-    queryable |> preload([:user])
+  defp preload_account(queryable) do
+    queryable |> preload([:account])
   end
 
   defp preload_last_usage(queryable) do

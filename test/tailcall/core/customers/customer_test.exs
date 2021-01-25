@@ -6,14 +6,14 @@ defmodule Tailcall.Core.Customers.CustomerTest do
 
   describe "create_changeset/2" do
     test "only permitted_keys are casted" do
-      customer_params = params_for(:customer, tax_exempt: "exempt", invoice_prefix: "AAA")
+      customer_params = params_for(:customer, tax_exempt: "exempt")
 
       changeset =
         Customer.create_changeset(%Customer{}, Map.merge(customer_params, %{new_key: "value"}))
 
       changes_keys = changeset.changes |> Map.keys()
 
-      assert :user_id in changes_keys
+      assert :account_id in changes_keys
       assert :livemode in changes_keys
       assert :name in changes_keys
       assert :email in changes_keys
@@ -28,14 +28,14 @@ defmodule Tailcall.Core.Customers.CustomerTest do
     test "when required params are missing, returns an invalid changeset" do
       customer_params =
         params_for(:customer,
-          user_id: nil,
+          account_id: nil,
           livemode: nil
         )
 
       changeset = Customer.create_changeset(%Customer{}, customer_params)
 
       refute changeset.valid?
-      assert %{user_id: ["can't be blank"]} = errors_on(changeset)
+      assert %{account_id: ["can't be blank"]} = errors_on(changeset)
       assert %{livemode: ["can't be blank"]} = errors_on(changeset)
     end
 
@@ -59,7 +59,7 @@ defmodule Tailcall.Core.Customers.CustomerTest do
 
   describe "updade_changeset/2" do
     test "only permitted_keys are casted" do
-      customer = insert(:customer)
+      customer = insert!(:customer)
 
       customer_params = params_for(:customer, tax_exempt: "exempt")
 
@@ -68,7 +68,7 @@ defmodule Tailcall.Core.Customers.CustomerTest do
 
       changes_keys = changeset.changes |> Map.keys()
 
-      refute :user_id in changes_keys
+      refute :account_id in changes_keys
       refute :livemode in changes_keys
       assert :name in changes_keys
       assert :email in changes_keys
@@ -81,7 +81,7 @@ defmodule Tailcall.Core.Customers.CustomerTest do
 
   describe "delete_changeset/2" do
     test "when deleted_at is nil, returns an invalid changeset" do
-      customer = insert(:customer)
+      customer = insert!(:customer)
 
       changeset = Customer.delete_changeset(customer, %{})
 
@@ -90,7 +90,7 @@ defmodule Tailcall.Core.Customers.CustomerTest do
     end
 
     test "when deleted_at is valid, returns an valid changeset" do
-      customer = insert(:customer)
+      customer = insert!(:customer)
 
       changeset = Customer.delete_changeset(customer, %{deleted_at: @datetime_1})
 

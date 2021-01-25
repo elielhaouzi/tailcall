@@ -51,7 +51,7 @@ defmodule Tailcall.MixProject do
 
       #
       {:hammox, "~> 0.3", only: :test},
-      {:annacl, "~> 1.1.0"},
+      {:annacl, git: "git@github.com:annatel/annacl.git", branch: "v2"},
       {:antl_utils_elixir, "~> 0.2.0"},
       {:antl_utils_ecto, "~> 1.2.0", override: true},
       {:shortcode, "~> 0.5.0"},
