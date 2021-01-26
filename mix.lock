@@ -1,5 +1,5 @@
 %{
-  "annacl": {:git, "git@github.com:annatel/annacl.git", "a093cb7e6a72b56042ac2725a31cfa579b4b1a78", [branch: "v2"]},
+  "annacl": {:git, "git@github.com:annatel/annacl.git", "55a7eff89617fe9cf41f532cf3f62566bd4b0d9a", [tag: "2.0.0"]},
   "antl_utils_ecto": {:hex, :antl_utils_ecto, "1.2.1", "5abb1d2f839528307951ff3fc42e2fb29cf28b1b9d209be2621fa3c89f92ec7d", [:mix], [{:antl_utils_elixir, "~> 0.2.0", [hex: :antl_utils_elixir, repo: "hexpm", optional: false]}, {:ecto, "~> 3.0", [hex: :ecto, repo: "hexpm", optional: false]}], "hexpm", "de286b2afc8ffd679d1a4b971b0fb6b07fcb899324f2d226b83351c47dba61fd"},
   "antl_utils_elixir": {:hex, :antl_utils_elixir, "0.2.0", "6456044a1c8d4dfbec020d4f7af3fb3dd7d73f7c19f5c533ce0abec0488bbb82", [:mix], [], "hexpm", "01cbfb5be4d1bc39db4232e4556409425f5a623e2f8cf4168fcf58934c23c314"},
   "certifi": {:hex, :certifi, "2.5.3", "70bdd7e7188c804f3a30ee0e7c99655bc35d8ac41c23e12325f36ab449b70651", [:rebar3], [{:parse_trans, "~>3.3", [hex: :parse_trans, repo: "hexpm", optional: false]}], "hexpm", "ed516acb3929b101208a9d700062d520f3953da3b6b918d866106ffa980e1c10"},
