@@ -47,4 +47,15 @@ defmodule Tailcall.Accounts.AccountsTest do
       assert Accounts.livemode?(api_key) == livemode
     end
   end
+
+  describe "account_exists?/1" do
+    test "when the account exists, returns true" do
+      account = insert!(:account)
+      assert Accounts.account_exists?(account.id)
+    end
+
+    test "when account does not exist, returns false" do
+      refute Accounts.account_exists?(shortcode_id())
+    end
+  end
 end

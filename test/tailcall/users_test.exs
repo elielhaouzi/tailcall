@@ -39,8 +39,8 @@ defmodule Tailcall.UsersTest do
         [id: [shortcode_id()]],
         [email: "non existing email"],
         [name: "non existing name"],
-        [ongoing_at: price.created_at |> add(-1200)],
-        [deleted_at: price.created_at |> add(-1200)]
+        [ongoing_at: user.created_at |> add(-1200)],
+        [deleted_at: user.created_at |> add(-1200)]
       ]
       |> Enum.each(fn filter ->
         assert %{total: 0, data: []} = Users.list_users(filters: filter)
@@ -131,6 +131,38 @@ defmodule Tailcall.UsersTest do
 
       refute changeset.valid?
       assert %{name: ["can't be blank"]} = errors_on(changeset)
+    end
+
+    test "when user is soft deleted, raises a FunctionClauseError" do
+      user = build(:user) |> make_deleted() |> insert!()
+
+      assert_raise FunctionClauseError, fn ->
+        Users.update_user(user, %{})
+      end
+    end
+  end
+
+  describe "delete_user/2" do
+    test "when data is valid, soft delete the user" do
+      user = insert!(:user)
+      utc_now = utc_now()
+      assert {:ok, %User{deleted_at: ^utc_now}} = Users.delete_user(user, utc_now)
+    end
+
+    test "when data is invalid, returns an invalid changeset" do
+      user = insert!(:user)
+
+      assert {:error, changeset} = Users.delete_user(user, user.created_at |> add(-1200))
+
+      refute changeset.valid?
+    end
+
+    test "when user is soft deleted, raises a FunctionClauseError" do
+      user = build(:user) |> make_deleted() |> insert!()
+
+      assert_raise FunctionClauseError, fn ->
+        Users.delete_user(user, utc_now())
+      end
     end
   end
 end

@@ -1,110 +1,161 @@
-# defmodule Payments.CustomersTest do
-#   use ExUnit.Case, async: true
-#   use Payments.DataCase
+defmodule Tailcall.Core.CustomersTest do
+  use ExUnit.Case, async: true
+  use Tailcall.DataCase
 
-#   alias Payments.Accounts.Users.User
-#   alias Payments.Customers
-#   alias Payments.Customers.Customer
+  alias Tailcall.Core.Customers
+  alias Tailcall.Core.Customers.Customer
 
-#   @uuids %{0 => "00000000-0000-0000-0000-000000000000"}
+  describe "list_customers/1" do
+    test "list_customers" do
+      %{id: customer_id} = insert!(:customer)
 
-#   @datetime_1 DateTime.from_naive!(~N[2018-05-24 12:27:48], "Etc/UTC")
+      assert %{total: 1, data: [%{id: ^customer_id}]} = Customers.list_customers()
+    end
 
-#   setup :verify_on_exit!
+    test "order_by" do
+      %{id: id1} = insert!(:customer)
+      %{id: id2} = insert!(:customer)
 
-#   describe "create_customer/1" do
-#     test "with invalid data, returns an error tuple with an invalid changeset" do
-#       customer_params = params_for(:customer, livemode: nil)
+      assert %{data: [%{id: ^id2}, %{id: ^id1}]} = Customers.list_customers()
 
-#       assert {:error, changeset} =
-#                Customers.create_customer(%User{id: @uuids[0]}, customer_params)
+      assert %{data: [%{id: ^id1}, %{id: ^id2}]} =
+               Customers.list_customers(order_by_fields: [asc: :id])
+    end
 
-#       refute changeset.valid?
-#     end
+    test "filters" do
+      customer = insert!(:customer)
 
-#     test "when user does not exist, returns an error tuple with an invalid changeset" do
-#       user = insert(:user)
-#       user_id = user.id
-#       AccountsMock |> expect(:user_exists?, fn ^user_id -> false end)
+      [
+        [id: customer.id],
+        [id: [customer.id]],
+        [account_id: customer.account_id],
+        [email: customer.email],
+        [livemode: customer.livemode],
+        [name: customer.name],
+        [ongoing_at: customer.created_at]
+      ]
+      |> Enum.each(fn filter ->
+        assert %{total: 1, data: [_customer]} = Customers.list_customers(filters: filter)
+      end)
 
-#       customer_params = params_for(:customer)
+      [
+        [id: shortcode_id()],
+        [id: [shortcode_id()]],
+        [account_id: shortcode_id()],
+        [email: "non existing email"],
+        [livemode: !customer.livemode],
+        [name: "non existing name"],
+        [ongoing_at: customer.created_at |> add(-1200)],
+        [deleted_at: customer.created_at |> add(-1200)]
+      ]
+      |> Enum.each(fn filter ->
+        assert %{total: 0, data: []} = Customers.list_customers(filters: filter)
+      end)
+    end
+  end
 
-#       assert {:error, changeset} = Customers.create_customer(%User{id: user_id}, customer_params)
+  describe "create_customer/1" do
+    test "when data is valid, creates the customer" do
+      customer_params = params_for(:customer)
 
-#       refute changeset.valid?
-#       assert %{user: ["does not exist"]} = errors_on(changeset)
-#     end
+      assert {:ok, %Customer{}} = Customers.create_customer(customer_params)
+    end
 
-#     test "when data is valid, creates the customer" do
-#       user = insert(:user)
-#       AccountsMock |> expect(:user_exists?, fn _ -> true end)
+    test "when data is invalid, returns an error tuple with an invalid changeset" do
+      assert {:error, changeset} = Customers.create_customer(%{})
 
-#       customer_params = params_for(:customer, user_id: user.id)
+      refute changeset.valid?
+    end
+  end
 
-#       assert {:ok, %Customer{} = customer} = Customers.create_customer(user, customer_params)
-#       assert customer.name == customer_params.name
-#     end
-#   end
+  describe "get_customer/1" do
+    test "when the customer exists, returns the customer" do
+      %{id: customer_id} = insert!(:customer)
 
-#   describe "get_customer/1" do
-#     test "when customer does not exist, returns nil" do
-#       assert is_nil(Customers.get_customer(@uuids[0]))
-#     end
+      assert %Customer{id: ^customer_id} = Customers.get_customer(customer_id)
+    end
 
-#     test "when customer exists, returns the customer" do
-#       customer_factory = insert(:customer)
+    test "when customer does not exist, returns nil" do
+      assert is_nil(Customers.get_customer(shortcode_id()))
+    end
+  end
 
-#       customer = Customers.get_customer(customer_factory.id)
-#       assert %Customer{} = customer
-#       assert customer.id == customer_factory.id
-#     end
-#   end
+  describe "get_customer!/1" do
+    test "when the customer exists, returns the customer" do
+      %{id: customer_id} = insert!(:customer)
 
-#   describe "customer_exists?/1" do
-#     test "when customer does not exist, returns false" do
-#       refute Customers.customer_exists?(@uuids[0])
-#     end
+      assert %Customer{id: ^customer_id} = Customers.get_customer!(customer_id)
+    end
 
-#     test "when customer exists, returns it" do
-#       customer = insert(:customer)
+    test "when customer does not exist, raises a Ecto.NoResultsError" do
+      assert_raise Ecto.NoResultsError, fn ->
+        Customers.get_customer!(shortcode_id())
+      end
+    end
+  end
 
-#       assert Customers.customer_exists?(customer.id)
-#     end
-#   end
+  describe "customer_exists?/1" do
+    test "when the customer exists, returns true" do
+      customer = insert!(:customer)
+      assert Customers.customer_exists?(customer.id)
+    end
 
-#   describe "update_customer/2" do
-#     test "when customer is soft deleted, raise a FunctionClauseError" do
-#       customer = insert(:customer, deleted_at: @datetime_1)
+    test "when customer does not exist, returns false" do
+      refute Customers.customer_exists?(shortcode_id())
+    end
+  end
 
-#       assert_raise FunctionClauseError, fn ->
-#         Customers.update_customer(customer, %{active: false})
-#       end
-#     end
+  describe "update_customer/2" do
+    test "when data is valid, updates the customer" do
+      customer_factory = insert!(:customer)
 
-#     test "when data is valid, update the customer" do
-#       customer = insert(:customer)
+      customer_params = params_for(:customer)
 
-#       {:ok, %Customer{} = customer} = Customers.update_customer(customer, %{name: "new name"})
-#       assert customer.name == "new name"
-#     end
-#   end
+      assert {:ok, %Customer{} = customer} =
+               Customers.update_customer(customer_factory, customer_params)
 
-#   describe "delete_customer/2" do
-#     test "with a customer that is already soft deleted, raises a FunctionClauseError" do
-#       customer = insert(:customer, deleted_at: @datetime_1)
+      assert customer.name == customer_params.name
+    end
 
-#       assert_raise FunctionClauseError, fn ->
-#         Customers.delete_customer(customer, @datetime_1)
-#       end
-#     end
+    test "when data is invalid, returns an invalid changeset" do
+      customer = insert!(:customer)
 
-#     test "with a valid customer, soft deletes the customer" do
-#       customer_factory = insert(:customer)
+      assert {:error, changeset} = Customers.update_customer(customer, %{balance: nil})
 
-#       assert {:ok, %Customer{} = customer} =
-#                Customers.delete_customer(customer_factory, @datetime_1)
+      refute changeset.valid?
+    end
 
-#       assert customer.deleted_at == @datetime_1
-#     end
-#   end
-# end
+    test "when customer is soft deleted, raises a FunctionClauseError" do
+      customer = build(:customer) |> make_deleted() |> insert!()
+
+      assert_raise FunctionClauseError, fn ->
+        Customers.update_customer(customer, %{})
+      end
+    end
+  end
+
+  describe "delete_customer/2" do
+    test "when data is valid, soft delete the customer" do
+      customer = insert!(:customer)
+      utc_now = utc_now()
+      assert {:ok, %Customer{deleted_at: ^utc_now}} = Customers.delete_customer(customer, utc_now)
+    end
+
+    test "when data is invalid, returns an invalid changeset" do
+      customer = insert!(:customer)
+
+      assert {:error, changeset} =
+               Customers.delete_customer(customer, customer.created_at |> add(-1200))
+
+      refute changeset.valid?
+    end
+
+    test "when customer is soft deleted, raises a FunctionClauseError" do
+      customer = build(:customer) |> make_deleted() |> insert!()
+
+      assert_raise FunctionClauseError, fn ->
+        Customers.delete_customer(customer, utc_now())
+      end
+    end
+  end
+end

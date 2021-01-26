@@ -58,14 +58,14 @@ defmodule Tailcall.Users do
   end
 
   @spec update_user(User.t(), map) :: {:ok, User.t()} | {:error, Ecto.Changeset.t()}
-  def update_user(%User{} = user, attrs) when is_map(attrs) do
+  def update_user(%User{deleted_at: nil} = user, attrs) when is_map(attrs) do
     user
     |> User.update_changeset(attrs)
     |> Repo.update()
   end
 
   @spec delete_user(User.t(), map) :: {:ok, User.t()} | {:error, Ecto.Changeset.t()}
-  def delete_user(%User{} = user, %DateTime{} = delete_at) do
+  def delete_user(%User{deleted_at: nil} = user, %DateTime{} = delete_at) do
     user
     |> User.delete_changeset(%{deleted_at: delete_at})
     |> Repo.update()

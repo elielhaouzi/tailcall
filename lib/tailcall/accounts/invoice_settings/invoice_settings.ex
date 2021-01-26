@@ -1,7 +1,7 @@
 defmodule Tailcall.Accounts.InvoiceSettings do
   use Ecto.Schema
 
-  import Ecto.Changeset, only: [cast: 3, cast_embed: 3]
+  import Ecto.Changeset, only: [cast: 3]
 
   @type t :: %__MODULE__{}
 

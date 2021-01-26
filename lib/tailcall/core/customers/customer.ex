@@ -5,7 +5,7 @@ defmodule Tailcall.Core.Customers.Customer do
     only: [cast: 3, put_embed: 3, validate_inclusion: 3, validate_number: 3, validate_required: 2]
 
   alias Tailcall.Accounts.Account
-  # alias Tailcall.Core.Customers.InvoiceSettings
+  alias Tailcall.Core.Customers.InvoiceSettings
 
   @type t :: %__MODULE__{
           account: Account.t(),
@@ -67,6 +67,8 @@ defmodule Tailcall.Core.Customers.Customer do
     |> cast(attrs, [
       :account_id,
       :balance,
+      :currency,
+      :created_at,
       :description,
       :email,
       :invoice_prefix,
@@ -89,9 +91,10 @@ defmodule Tailcall.Core.Customers.Customer do
     customer
     |> cast(attrs, [
       :balance,
-      :currency,
+      :delinquent,
       :description,
       :email,
+      :metadata,
       :invoice_prefix,
       :name,
       :next_invoice_sequence,
@@ -99,7 +102,8 @@ defmodule Tailcall.Core.Customers.Customer do
       :preferred_locales,
       :tax_exempt
     ])
-    |> validate_required([:balance, :livemode, :next_invoice_sequence])
+    # |> put_embed(:invoice_settings, %{})
+    |> validate_required([:balance, :next_invoice_sequence])
     |> validate_number(:next_invoice_sequence, greater_than_or_equal_to: 1)
   end
 
@@ -108,5 +112,6 @@ defmodule Tailcall.Core.Customers.Customer do
     customer
     |> cast(attrs, [:deleted_at])
     |> validate_required([:deleted_at])
+    |> AntlUtilsEcto.Changeset.validate_datetime_gte(:deleted_at, :created_at)
   end
 end

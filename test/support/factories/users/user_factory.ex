@@ -17,7 +17,7 @@ defmodule Tailcall.Factory.Users.User do
       def make_deleted(%User{} = user), do: %{user | deleted_at: utc_now()}
 
       def make_superadmin(%User{} = user),
-        do: user |> Annacl.assign_role!(Annacl.superadmin_role_name())
+        do: user |> Annacl.assign_role!(Annacl.superadmin_role_name()) |> IO.inspect()
     end
   end
 end

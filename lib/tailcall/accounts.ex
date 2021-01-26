@@ -7,7 +7,7 @@ defmodule Tailcall.Accounts do
 
   alias Tailcall.Repo
 
-  alias Tailcall.Accounts.{Account, AccountQueryable}
+  alias Tailcall.Accounts.AccountQueryable
   alias Tailcall.Accounts.ApiKeys
   alias Tailcall.Accounts.ApiKeys.ApiKey
 

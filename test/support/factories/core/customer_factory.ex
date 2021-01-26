@@ -15,24 +15,25 @@ defmodule Tailcall.Factory.Core.Customers.Customer do
           description: "description_#{System.unique_integer()}",
           email: "email_#{System.unique_integer()}",
           invoice_prefix: "invoice_prefix_#{System.unique_integer([])}",
-          # invoice_settings: build(:invoice_settings),
+          invoice_settings: build(:customer_invoice_settings),
           livemode: false,
           name: "name_#{System.unique_integer()}",
           next_invoice_sequence: 1,
-          phone: "phone_#{System.unique_integer()}"
+          phone: "phone_#{System.unique_integer()}",
+          preferred_locales: ["he"]
         }
       end
 
       def make_deleted(%Customer{} = customer), do: %{customer | deleted_at: utc_now()}
 
-      def build(:invoice_settings) do
+      def build(:customer_invoice_settings) do
         %InvoiceSettings{
-          custom_fields: [build(:custom_field)],
+          custom_fields: [build(:customer_invoice_settings_custom_field)],
           footer: "footer_#{System.unique_integer()}"
         }
       end
 
-      def build(:custom_field) do
+      def build(:customer_invoice_settings_custom_field) do
         %CustomField{
           name: "name_#{System.unique_integer()}",
           value: "value_#{System.unique_integer()}"

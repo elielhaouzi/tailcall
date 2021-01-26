@@ -1,4 +1,4 @@
-defmodule Payments.Customers do
+defmodule Tailcall.Core.Customers do
   @moduledoc """
   The Customer context.
   """
@@ -42,16 +42,10 @@ defmodule Payments.Customers do
   end
 
   @spec get_customer(binary) :: Customer.t() | nil
-  def get_customer(id) when is_binary(id) do
-    Customer
-    |> Repo.get(id)
-  end
+  def get_customer(id) when is_binary(id), do: Customer |> Repo.get(id)
 
   @spec get_customer!(binary) :: Customer.t() | nil
-  def get_customer!(id) when is_binary(id) do
-    Customer
-    |> Repo.get!(id)
-  end
+  def get_customer!(id) when is_binary(id), do: Customer |> Repo.get!(id)
 
   @spec customer_exists?(binary) :: boolean
   def customer_exists?(id) when is_binary(id) do
