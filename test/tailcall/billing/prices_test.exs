@@ -28,7 +28,7 @@ defmodule Tailcall.Billing.PricesTest do
       [
         [id: price.id],
         [id: [price.id]],
-        [user_id: price.user_id],
+        [account_id: price.account_id],
         [product_id: price.product_id],
         [active: price.active],
         [currency: price.currency],
@@ -42,7 +42,7 @@ defmodule Tailcall.Billing.PricesTest do
 
       [
         [id: shortcode_id()],
-        [user_id: shortcode_id()],
+        [account_id: shortcode_id()],
         [product_id: shortcode_id()],
         [active: !price.active],
         [currency: "currency"],
@@ -80,14 +80,14 @@ defmodule Tailcall.Billing.PricesTest do
       refute changeset.valid?
     end
 
-    test "when user does not exist, returns an error tuple with an invalid changeset" do
+    test "when account does not exist, returns an error tuple with an invalid changeset" do
       price_params =
-        build(:price, user_id: shortcode_id()) |> make_type_one_time() |> params_for()
+        build(:price, account_id: shortcode_id()) |> make_type_one_time() |> params_for()
 
       assert {:error, changeset} = Prices.create_price(price_params)
 
       refute changeset.valid?
-      assert %{user: ["does not exist"]} = errors_on(changeset)
+      assert %{account: ["does not exist"]} = errors_on(changeset)
     end
 
     test "when product does not exist, returns an error tuple with an invalid changeset" do

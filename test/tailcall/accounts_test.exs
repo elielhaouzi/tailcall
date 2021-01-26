@@ -10,14 +10,14 @@ defmodule Tailcall.Accounts.AccountsTest do
       api_key_factory = insert!(:api_key)
       api_key_usage_params = params_for(:api_key_usage)
 
-      assert {:ok, %{api_key: %ApiKey{} = api_key, user: user, superadmin?: false}} =
+      assert {:ok, %{api_key: %ApiKey{} = api_key, account: account}} =
                Accounts.authenticate(%{
                  "api_key" => api_key_factory.secret,
                  "ip_address" => api_key_usage_params.ip_address
                })
 
       assert api_key.id == api_key_factory.id
-      assert user.id == api_key_factory.user_id
+      assert account.id == api_key_factory.account_id
 
       api_key = Accounts.ApiKeys.get_api_key(api_key.id, includes: [:last_usage])
       assert api_key.last_used_ip_address == api_key_usage_params.ip_address
@@ -45,6 +45,17 @@ defmodule Tailcall.Accounts.AccountsTest do
       api_key = insert!(:api_key, livemode: livemode)
 
       assert Accounts.livemode?(api_key) == livemode
+    end
+  end
+
+  describe "account_exists?/1" do
+    test "when the account exists, returns true" do
+      account = insert!(:account)
+      assert Accounts.account_exists?(account.id)
+    end
+
+    test "when account does not exist, returns false" do
+      refute Accounts.account_exists?(shortcode_id())
     end
   end
 end

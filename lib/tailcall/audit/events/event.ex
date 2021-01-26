@@ -3,10 +3,12 @@ defmodule Tailcall.Audit.Events.Event do
 
   import Ecto.Changeset, only: [cast: 3, validate_required: 2]
 
-  alias Tailcall.Accounts.Users.User
+  alias Tailcall.Accounts.Account
 
   @type t :: %__MODULE__{
-          api_version: binary | nil,
+          account: Account.t(),
+          account_id: binary,
+          api_version: binary,
           created_at: DateTime.t(),
           data: map,
           livemode: boolean,
@@ -16,16 +18,14 @@ defmodule Tailcall.Audit.Events.Event do
           type: binary,
           id: binary,
           inserted_at: DateTime.t(),
-          updated_at: DateTime.t(),
-          user: User.t(),
-          user_id: binary
+          updated_at: DateTime.t()
         }
 
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "evt", autogenerate: true}
   schema "events" do
     field(:object, :string, default: "event")
 
-    belongs_to(:user, User, type: Shortcode.Ecto.ID, prefix: "usr")
+    belongs_to(:account, Account, type: Shortcode.Ecto.ID, prefix: "acct")
 
     field(:api_version, :string, default: "2021-01-01")
     field(:created_at, :utc_datetime)
@@ -39,11 +39,11 @@ defmodule Tailcall.Audit.Events.Event do
     timestamps(type: :utc_datetime)
   end
 
-  @spec changeset(Event.t(), map()) :: Ecto.Changeset.t()
+  @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(%__MODULE__{} = event, attrs) when is_map(attrs) do
     event
     |> cast(attrs, [
-      :user_id,
+      :account_id,
       :api_version,
       :created_at,
       :data,
@@ -53,6 +53,6 @@ defmodule Tailcall.Audit.Events.Event do
       :resource_type,
       :type
     ])
-    |> validate_required([:user_id, :created_at, :data, :livemode, :type])
+    |> validate_required([:account_id, :created_at, :data, :livemode, :type])
   end
 end

@@ -11,7 +11,7 @@ defmodule Tailcall.Billing.Prices.PriceTest do
         params_for(:price,
           active: false,
           billing_scheme: "billing_scheme",
-          metadata: %{},
+          metadata: %{key: "value"},
           recurring_aggregate_usage: "recurring_aggregate_usage",
           recurring_interval: "recurring_interval",
           recurring_interval_count: 0,
@@ -28,7 +28,7 @@ defmodule Tailcall.Billing.Prices.PriceTest do
 
       changes_keys = changeset.changes |> Map.keys()
 
-      assert :user_id in changes_keys
+      assert :account_id in changes_keys
       assert :product_id in changes_keys
 
       assert :active in changes_keys
@@ -57,7 +57,7 @@ defmodule Tailcall.Billing.Prices.PriceTest do
 
       refute changeset.valid?
       assert length(changeset.errors) == 6
-      assert %{user_id: ["can't be blank"]} = errors_on(changeset)
+      assert %{account_id: ["can't be blank"]} = errors_on(changeset)
       assert %{product_id: ["can't be blank"]} = errors_on(changeset)
       assert %{active: ["can't be blank"]} = errors_on(changeset)
       assert %{created_at: ["can't be blank"]} = errors_on(changeset)
@@ -209,7 +209,7 @@ defmodule Tailcall.Billing.Prices.PriceTest do
       changeset = Price.create_changeset(%Price{}, price_params)
 
       assert changeset.valid?
-      assert get_field(changeset, :user_id) == price_params.user_id
+      assert get_field(changeset, :account_id) == price_params.account_id
       assert get_field(changeset, :product_id) == price_params.product_id
 
       assert get_field(changeset, :active) == true
@@ -299,7 +299,7 @@ defmodule Tailcall.Billing.Prices.PriceTest do
       changeset = Price.create_changeset(%Price{}, price_params)
 
       assert changeset.valid?
-      assert get_field(changeset, :user_id) == price_params.user_id
+      assert get_field(changeset, :account_id) == price_params.account_id
       assert get_field(changeset, :product_id) == price_params.product_id
 
       assert get_field(changeset, :active) == true
@@ -362,7 +362,7 @@ defmodule Tailcall.Billing.Prices.PriceTest do
       changeset = Price.create_changeset(%Price{}, price_params)
 
       assert changeset.valid?
-      assert get_field(changeset, :user_id) == price_params.user_id
+      assert get_field(changeset, :account_id) == price_params.account_id
       assert get_field(changeset, :product_id) == price_params.product_id
 
       assert get_field(changeset, :active) == true

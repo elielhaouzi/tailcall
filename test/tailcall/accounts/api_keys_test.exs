@@ -43,12 +43,12 @@ defmodule Tailcall.Accounts.ApiKeysTest do
       last_api_key_usage = insert!(:api_key_usage, api_key_id: api_key_factory.id)
 
       assert [api_key] = ApiKeys.list_api_keys()
-      refute Ecto.assoc_loaded?(api_key.user)
+      refute Ecto.assoc_loaded?(api_key.account)
       assert is_nil(api_key.last_used_at)
       assert is_nil(api_key.last_used_ip_address)
 
-      assert [api_key] = ApiKeys.list_api_keys(includes: [:last_usage, :user])
-      assert api_key.user.id == api_key_factory.user_id
+      assert [api_key] = ApiKeys.list_api_keys(includes: [:last_usage, :account])
+      assert api_key.account.id == api_key_factory.account_id
       assert api_key.last_used_at == last_api_key_usage.used_at
       assert api_key.last_used_ip_address == last_api_key_usage.ip_address
     end
@@ -56,11 +56,11 @@ defmodule Tailcall.Accounts.ApiKeysTest do
 
   describe "create_api_key/1" do
     test "when data is valid, creates the api_key" do
-      user = insert!(:user)
-      api_key_params = params_for(:api_key, user_id: user.id, expired_at: utc_now())
+      account = insert!(:account)
+      api_key_params = params_for(:api_key, account_id: account.id, expired_at: utc_now())
 
       assert {:ok, %ApiKeys.ApiKey{} = api_key} = ApiKeys.create_api_key(api_key_params)
-      assert api_key.user_id == api_key_params.user_id
+      assert api_key.account_id == api_key_params.account_id
       assert api_key.created_at == api_key_params.created_at
       assert api_key.expired_at == api_key_params.expired_at
       assert api_key.livemode == api_key_params.livemode
@@ -68,17 +68,17 @@ defmodule Tailcall.Accounts.ApiKeysTest do
       assert api_key.type == api_key_params.type
     end
 
-    test "when user does not exist, returns an error tuple with an invalid changeset" do
-      api_key_params = params_for(:api_key, user_id: "1")
+    test "when account does not exist, returns an error tuple with an invalid changeset" do
+      api_key_params = params_for(:api_key, account_id: shortcode_id())
 
       assert {:error, changeset} = ApiKeys.create_api_key(api_key_params)
 
       refute changeset.valid?
-      assert %{user: ["does not exist"]} = errors_on(changeset)
+      assert %{account: ["does not exist"]} = errors_on(changeset)
     end
 
     test "when data is invalid, returns an error tuple with an invalid changeset" do
-      api_key_params = params_for(:api_key, user_id: nil)
+      api_key_params = params_for(:api_key, account_id: nil)
 
       assert {:error, changeset} = ApiKeys.create_api_key(api_key_params)
 
@@ -99,12 +99,12 @@ defmodule Tailcall.Accounts.ApiKeysTest do
       last_api_key_usage = insert!(:api_key_usage, api_key_id: api_key_factory.id)
 
       api_key = ApiKeys.get_api_key(api_key_factory.id)
-      refute Ecto.assoc_loaded?(api_key.user)
+      refute Ecto.assoc_loaded?(api_key.account)
       assert is_nil(api_key.last_used_at)
       assert is_nil(api_key.last_used_ip_address)
 
-      api_key = ApiKeys.get_api_key(api_key_factory.id, includes: [:last_usage, :user])
-      assert api_key.user.id == api_key_factory.user_id
+      api_key = ApiKeys.get_api_key(api_key_factory.id, includes: [:last_usage, :account])
+      assert api_key.account.id == api_key_factory.account_id
       assert api_key.last_used_at == last_api_key_usage.used_at
       assert api_key.last_used_ip_address == last_api_key_usage.ip_address
     end
@@ -128,16 +128,16 @@ defmodule Tailcall.Accounts.ApiKeysTest do
       last_api_key_usage = insert!(:api_key_usage, api_key_id: api_key_factory.id)
 
       assert api_key = ApiKeys.get_api_key_by(secret: api_key_factory.secret)
-      refute Ecto.assoc_loaded?(api_key.user)
+      refute Ecto.assoc_loaded?(api_key.account)
       assert is_nil(api_key.last_used_at)
       assert is_nil(api_key.last_used_ip_address)
 
       assert api_key =
                ApiKeys.get_api_key_by([secret: api_key_factory.secret],
-                 includes: [:last_usage, :user]
+                 includes: [:last_usage, :account]
                )
 
-      assert api_key.user.id == api_key_factory.user_id
+      assert api_key.account.id == api_key_factory.account_id
       assert api_key.last_used_at == last_api_key_usage.used_at
       assert api_key.last_used_ip_address == last_api_key_usage.ip_address
     end
@@ -160,7 +160,7 @@ defmodule Tailcall.Accounts.ApiKeysTest do
       assert new_api_key.id != api_key.id
       assert new_api_key.secret != api_key.secret
       assert new_api_key.created_at != expires_at
-      assert new_api_key.user_id == api_key.user_id
+      assert new_api_key.account_id == api_key.account_id
       assert new_api_key.type == api_key.type
 
       assert_in_delta DateTime.to_unix(new_api_key.created_at), DateTime.to_unix(utc_now()), 100

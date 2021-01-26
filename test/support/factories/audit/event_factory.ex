@@ -5,7 +5,7 @@ defmodule Tailcall.Factory.Audit.Event do
     quote do
       def build(:event) do
         %Event{
-          user_id: shortcode_id(),
+          account_id: shortcode_id("acct"),
           api_version: "api_version",
           created_at: utc_now(),
           data: %{},

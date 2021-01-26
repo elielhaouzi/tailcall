@@ -5,11 +5,11 @@ defmodule Tailcall.Factory.Billing.Price do
   defmacro __using__(_opts) do
     quote do
       def build(:price) do
-        user = insert!(:user)
-        product = insert!(:product, user_id: user.id)
+        account = insert!(:account)
+        product = insert!(:product, account_id: account.id)
 
         %Price{
-          user_id: user.id,
+          account_id: account.id,
           product_id: product.id,
           created_at: utc_now(),
           currency: Price.currencies().ils,

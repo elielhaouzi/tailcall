@@ -3,9 +3,11 @@ defmodule Tailcall.Billing.Products.Product do
 
   import Ecto.Changeset, only: [cast: 3, validate_inclusion: 3, validate_required: 2]
 
-  alias Tailcall.Accounts.Users.User
+  alias Tailcall.Accounts.Account
 
   @type t :: %__MODULE__{
+          account: Account.t(),
+          account_id: binary,
           active: boolean,
           caption: binary | nil,
           created_at: DateTime.t(),
@@ -21,23 +23,21 @@ defmodule Tailcall.Billing.Products.Product do
           type: binary,
           unit_label: binary | nil,
           url: binary | nil,
-          updated_at: DateTime.t(),
-          user: User.t(),
-          user_id: binary
+          updated_at: DateTime.t()
         }
 
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "prod", autogenerate: true}
   schema "products" do
     field(:object, :string, default: "product")
 
-    belongs_to(:user, User, type: Shortcode.Ecto.ID, prefix: "usr")
+    belongs_to(:account, Account, type: Shortcode.Ecto.ID, prefix: "acct")
 
     field(:active, :boolean, default: true)
     field(:caption, :string)
     field(:created_at, :utc_datetime)
     field(:description, :string)
     field(:livemode, :boolean)
-    field(:metadata, :map)
+    field(:metadata, :map, default: %{})
     field(:name, :string)
     field(:statement_descriptor, :string)
     field(:type, :string)
@@ -55,7 +55,7 @@ defmodule Tailcall.Billing.Products.Product do
   def create_changeset(%__MODULE__{} = product, attrs) when is_map(attrs) do
     product
     |> cast(attrs, [
-      :user_id,
+      :account_id,
       :active,
       :caption,
       :created_at,
@@ -68,7 +68,7 @@ defmodule Tailcall.Billing.Products.Product do
       :unit_label,
       :url
     ])
-    |> validate_required([:user_id, :active, :created_at, :livemode, :name, :type])
+    |> validate_required([:account_id, :active, :created_at, :livemode, :name, :type])
     |> validate_inclusion(:type, Map.values(product_types()))
   end
 

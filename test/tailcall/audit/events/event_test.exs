@@ -16,7 +16,7 @@ defmodule Tailcall.Audit.Events.EventTest do
 
       changes_keys = changeset.changes |> Map.keys()
 
-      assert :user_id in changes_keys
+      assert :account_id in changes_keys
       assert :api_version in changes_keys
       assert :created_at in changes_keys
       assert :data in changes_keys
@@ -32,7 +32,7 @@ defmodule Tailcall.Audit.Events.EventTest do
       changeset = Event.changeset(%Event{}, %{})
 
       refute changeset.valid?
-      assert %{user_id: ["can't be blank"]} = errors_on(changeset)
+      assert %{account_id: ["can't be blank"]} = errors_on(changeset)
       assert %{created_at: ["can't be blank"]} = errors_on(changeset)
       assert %{data: ["can't be blank"]} = errors_on(changeset)
       assert %{livemode: ["can't be blank"]} = errors_on(changeset)
@@ -46,7 +46,7 @@ defmodule Tailcall.Audit.Events.EventTest do
 
       assert changeset.valid?
 
-      assert get_field(changeset, :user_id) == event_params.user_id
+      assert get_field(changeset, :account_id) == event_params.account_id
       assert get_field(changeset, :created_at) == event_params.created_at
       assert get_field(changeset, :data) == event_params.data
       assert get_field(changeset, :livemode) == event_params.livemode

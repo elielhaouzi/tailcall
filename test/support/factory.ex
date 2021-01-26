@@ -1,12 +1,12 @@
 defmodule Tailcall.Factory do
   alias Tailcall.Repo
 
-  use Tailcall.Factory.Accounts.User
+  use Tailcall.Factory.Users.User
+
+  use Tailcall.Factory.Accounts.Account
   use Tailcall.Factory.Accounts.ApiKey
-
   use Tailcall.Factory.Audit.Event
-
-  # use Tailcall.Factory.Customer
+  use Tailcall.Factory.Core.Customers.Customer
 
   use Tailcall.Factory.Billing.TaxRate
   # use Tailcall.Factory.CustomerTaxId

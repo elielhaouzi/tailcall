@@ -3,9 +3,11 @@ defmodule Tailcall.Billing.TaxRates.TaxRate do
 
   import Ecto.Changeset, only: [cast: 3, validate_required: 2]
 
-  alias Tailcall.Accounts.Users.User
+  alias Tailcall.Accounts.Account
 
   @type t :: %__MODULE__{
+          account: Account.t(),
+          account_id: binary,
           active: boolean,
           created_at: DateTime.t(),
           description: binary | nil,
@@ -19,16 +21,14 @@ defmodule Tailcall.Billing.TaxRates.TaxRate do
           metadata: map | nil,
           percentage: Decimal.t(),
           object: binary,
-          updated_at: DateTime.t(),
-          user: User.t(),
-          user_id: binary
+          updated_at: DateTime.t()
         }
 
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "txr", autogenerate: true}
   schema "tax_rates" do
     field(:object, :string, default: "tax_rate")
 
-    belongs_to(:user, User, type: Shortcode.Ecto.ID, prefix: "usr")
+    belongs_to(:account, Account, type: Shortcode.Ecto.ID, prefix: "acct")
 
     field(:active, :boolean, default: true)
     field(:created_at, :utc_datetime)
@@ -37,7 +37,7 @@ defmodule Tailcall.Billing.TaxRates.TaxRate do
     field(:inclusive, :boolean)
     field(:jurisdiction, :string)
     field(:livemode, :boolean)
-    field(:metadata, :map)
+    field(:metadata, :map, default: %{})
     field(:percentage, :decimal)
 
     field(:deleted_at, :utc_datetime)
@@ -48,7 +48,7 @@ defmodule Tailcall.Billing.TaxRates.TaxRate do
   def create_changeset(%__MODULE__{} = tax_rate, attrs) when is_map(attrs) do
     tax_rate
     |> cast(attrs, [
-      :user_id,
+      :account_id,
       :active,
       :created_at,
       :description,
@@ -60,7 +60,7 @@ defmodule Tailcall.Billing.TaxRates.TaxRate do
       :percentage
     ])
     |> validate_required([
-      :user_id,
+      :account_id,
       :active,
       :created_at,
       :display_name,

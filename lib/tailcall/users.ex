@@ -1,12 +1,14 @@
-defmodule Tailcall.Accounts.Users do
+defmodule Tailcall.Users do
   @moduledoc """
   The User context.
   """
+  use Annacl
+
   import Ecto.Query, only: [order_by: 2]
 
   alias Tailcall.Repo
 
-  alias Tailcall.Accounts.Users.{User, UserQueryable}
+  alias Tailcall.Users.{User, UserQueryable}
 
   @default_order_by [asc: :id]
   @default_page_number 1
@@ -40,22 +42,13 @@ defmodule Tailcall.Accounts.Users do
   end
 
   @spec get_user(binary) :: User.t() | nil
-  def get_user(id) when is_binary(id) do
-    User
-    |> Repo.get(id)
-  end
+  def get_user(id) when is_binary(id), do: User |> Repo.get(id)
 
   @spec get_user!(binary) :: User.t()
-  def get_user!(id) when is_binary(id) do
-    User
-    |> Repo.get!(id)
-  end
+  def get_user!(id) when is_binary(id), do: User |> Repo.get!(id)
 
   @spec get_user_by([{:email, binary}]) :: User.t() | nil
-  def get_user_by(email: email) when is_binary(email) do
-    User
-    |> Repo.get_by(email: email)
-  end
+  def get_user_by(email: email) when is_binary(email), do: User |> Repo.get_by(email: email)
 
   @spec user_exists?(binary) :: boolean
   def user_exists?(id) when is_binary(id) do
@@ -65,13 +58,21 @@ defmodule Tailcall.Accounts.Users do
   end
 
   @spec update_user(User.t(), map) :: {:ok, User.t()} | {:error, Ecto.Changeset.t()}
-  def update_user(%User{} = user, attrs) when is_map(attrs) do
+  def update_user(%User{deleted_at: nil} = user, attrs) when is_map(attrs) do
     user
     |> User.update_changeset(attrs)
     |> Repo.update()
   end
 
-  defp user_queryable(opts) do
+  @spec delete_user(User.t(), map) :: {:ok, User.t()} | {:error, Ecto.Changeset.t()}
+  def delete_user(%User{deleted_at: nil} = user, %DateTime{} = delete_at) do
+    user
+    |> User.delete_changeset(%{deleted_at: delete_at})
+    |> Repo.update()
+  end
+
+  @spec user_queryable(keyword) :: Ecto.Queryable.t()
+  def user_queryable(opts) do
     filters = Keyword.get(opts, :filters, [])
 
     UserQueryable.queryable()

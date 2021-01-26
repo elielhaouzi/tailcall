@@ -2,31 +2,61 @@ defmodule Tailcall.Accounts do
   @moduledoc """
   Accounts context
   """
-  @behaviour Tailcall.Accounts.Behaviour
 
-  use Annacl
+  # import Ecto.Query, only: [order_by: 2]
 
+  alias Tailcall.Repo
+
+  alias Tailcall.Accounts.AccountQueryable
   alias Tailcall.Accounts.ApiKeys
   alias Tailcall.Accounts.ApiKeys.ApiKey
-  alias Tailcall.Accounts.Users
-  alias Tailcall.Accounts.Users.User
 
-  @impl Tailcall.Accounts.Behaviour
+  # @default_order_by [asc: :id]
+  # @default_page_number 1
+  # @default_page_size 100
+
+  # @spec list_accounts(keyword) :: %{data: [Account.t()], total: integer}
+  # def list_accounts(opts \\ []) do
+  #   order_by_fields = list_order_by_fields(opts)
+
+  #   page_number = Keyword.get(opts, :page_number, @default_page_number)
+  #   page_size = Keyword.get(opts, :page_size, @default_page_size)
+
+  #   query = account_queryable(opts)
+
+  #   count = query |> Repo.aggregate(:count, :id)
+
+  #   accounts =
+  #     query
+  #     |> order_by(^order_by_fields)
+  #     |> AccountQueryable.paginate(page_number, page_size)
+  #     |> Repo.all()
+
+  #   %{total: count, data: accounts}
+  # end
+
+  # @spec create_account(map) :: {:ok, Account.t()} | {:error, Ecto.Changeset.t()}
+  # def create_account(attrs) do
+  #   %Account{}
+  #   |> Account.create_changeset(attrs)
+  #   |> Repo.insert()
+  # end
+
+  # @spec get_account(binary) :: Account.t() | nil
+  # def get_account(id) when is_binary(id), do: Account |> Repo.get(id)
+
+  # @spec get_account!(binary) :: Account.t()
+  # def get_account!(id) when is_binary(id), do: Account |> Repo.get!(id)
+
   @spec authenticate(map) ::
-          {:ok, %{api_key: map, user: map}} | {:error, :unauthorized | :forbidden}
+          {:ok, %{api_key: map, account: map}} | {:error, :unauthorized | :forbidden}
   def authenticate(%{"api_key" => secret} = attrs) when is_binary(secret) do
     with {:api_key, %ApiKey{} = api_key} <-
-           {:api_key, ApiKeys.get_api_key_by([secret: secret], includes: [:user])},
+           {:api_key, ApiKeys.get_api_key_by([secret: secret], includes: [:account])},
          {:expired, false} <- {:expired, ApiKeys.expired?(api_key)} do
       {:ok, _api_key_usage} = ApiKeys.touch(api_key, attrs)
 
-      {:ok,
-       %{
-         api_key: api_key,
-         user: api_key.user,
-         #  superadmin?: false
-         superadmin?: has_role?(api_key.user, Annacl.superadmin_role_name())
-       }}
+      {:ok, %{api_key: api_key, account: api_key.account}}
     else
       {:api_key, nil} -> {:error, :unauthorized}
       {:expired, true} -> {:error, :forbidden}
@@ -35,47 +65,28 @@ defmodule Tailcall.Accounts do
 
   def authenticate(%{"api_key" => _key}), do: {:error, :unauthorized}
 
-  @impl Tailcall.Accounts.Behaviour
   @spec livemode?(ApiKey.t()) :: boolean
   def livemode?(%ApiKey{livemode: livemode}), do: livemode
 
-  @impl Tailcall.Accounts.Behaviour
-  @spec list_users(keyword) :: %{data: [User.t()], total: integer}
-  defdelegate list_users(opts \\ []), to: Users
+  @spec account_exists?(binary) :: boolean
+  def account_exists?(id) when is_binary(id) do
+    [filters: [id: id]]
+    |> account_queryable()
+    |> Repo.exists?()
+  end
 
-  @impl Tailcall.Accounts.Behaviour
-  @spec create_user(map) :: {:ok, User.t()} | {:error, Ecto.Changeset.t()}
-  defdelegate create_user(attrs), to: Users
+  defp account_queryable(opts) do
+    filters = Keyword.get(opts, :filters, [])
 
-  @impl Tailcall.Accounts.Behaviour
-  @spec get_user(binary) :: User.t() | nil
-  defdelegate get_user(id), to: Users
+    AccountQueryable.queryable()
+    |> AccountQueryable.filter(filters)
+  end
 
-  @impl Tailcall.Accounts.Behaviour
-  @spec get_user!(binary) :: User.t()
-  defdelegate get_user!(id), to: Users
-
-  @impl Tailcall.Accounts.Behaviour
-  @spec get_user_by(keyword) :: User.t() | nil
-  defdelegate get_user_by(filter), to: Users
-
-  @impl Tailcall.Accounts.Behaviour
-  @spec user_exists?(binary) :: boolean
-  defdelegate user_exists?(id), to: Users
-
-  @impl Tailcall.Accounts.Behaviour
-  @spec update_user(User.t(), map) :: {:ok, User.t()} | {:error, Ecto.Changeset.t()}
-  defdelegate update_user(user, attrs), to: Users
-
-  # def has_role?(user_id, role_name) when is_binary(user_id) and is_binary(role_name) do
-  #   user_id
-  #   |> get_user!()
-  #   |> has_role?(role_name)
-  # end
-
-  # def can?(user_id, permission_name) when is_binary(user_id) and is_binary(permission_name) do
-  #   user_id
-  #   |> get_user!()
-  #   |> can?(permission_name)
+  # defp list_order_by_fields(opts) do
+  #   Keyword.get(opts, :order_by_fields, [])
+  #   |> case do
+  #     [] -> @default_order_by
+  #     [_ | _] = order_by_fields -> order_by_fields
+  #   end
   # end
 end

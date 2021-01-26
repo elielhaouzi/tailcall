@@ -3,7 +3,7 @@ defmodule Tailcall.Repo.Migrations.CreateProductsTable do
 
   def change do
     create table(:products) do
-      add(:user_id, :bigint, null: false)
+      add(:account_id, :bigint, null: false)
 
       add(:active, :boolean, null: false)
       add(:caption, :string, null: true)
@@ -22,7 +22,7 @@ defmodule Tailcall.Repo.Migrations.CreateProductsTable do
       add(:object, :string, default: "product")
     end
 
-    create(index(:products, [:user_id]))
+    create(index(:products, [:account_id]))
 
     create(index(:products, [:active]))
     create(index(:products, [:created_at]))

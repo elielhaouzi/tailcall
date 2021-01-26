@@ -4,10 +4,10 @@ defmodule Tailcall.Factory.Billing.TaxRate do
   defmacro __using__(_opts) do
     quote do
       def build(:tax_rate) do
-        user = insert!(:user)
+        account = insert!(:account)
 
         %TaxRate{
-          user_id: user.id,
+          account_id: account.id,
           created_at: utc_now(),
           description: "description_#{System.unique_integer()}",
           display_name: "display_name_#{System.unique_integer()}",

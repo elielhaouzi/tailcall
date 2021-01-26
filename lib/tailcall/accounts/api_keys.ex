@@ -46,7 +46,7 @@ defmodule Tailcall.Accounts.ApiKeys do
     end)
     |> Multi.run(:api_key, fn _, %{old_api_key: old_api_key} ->
       create_api_key(%{
-        user_id: old_api_key.user_id,
+        account_id: old_api_key.account_id,
         created_at: DateTime.utc_now(),
         livemode: old_api_key.livemode,
         secret: generate_secret_key(old_api_key.type, old_api_key.livemode),

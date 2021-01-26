@@ -13,7 +13,7 @@ defmodule Tailcall.Billing.TaxRates.TaxRateTest do
 
       changes_keys = changeset.changes |> Map.keys()
 
-      assert :user_id in changes_keys
+      assert :account_id in changes_keys
       assert :active in changes_keys
       assert :created_at in changes_keys
       assert :description in changes_keys
@@ -33,7 +33,7 @@ defmodule Tailcall.Billing.TaxRates.TaxRateTest do
       changeset = TaxRate.create_changeset(%TaxRate{}, tax_rate_params)
 
       assert changeset.valid?
-      assert get_field(changeset, :user_id) == tax_rate_params.user_id
+      assert get_field(changeset, :account_id) == tax_rate_params.account_id
       assert get_field(changeset, :active) == tax_rate_params.active
       assert get_field(changeset, :created_at) == tax_rate_params.created_at
       assert get_field(changeset, :description) == tax_rate_params.description
@@ -52,7 +52,7 @@ defmodule Tailcall.Billing.TaxRates.TaxRateTest do
 
       refute changeset.valid?
       assert length(changeset.errors) == 7
-      assert %{user_id: ["can't be blank"]} = errors_on(changeset)
+      assert %{account_id: ["can't be blank"]} = errors_on(changeset)
       assert %{active: ["can't be blank"]} = errors_on(changeset)
       assert %{created_at: ["can't be blank"]} = errors_on(changeset)
       assert %{display_name: ["can't be blank"]} = errors_on(changeset)
@@ -73,7 +73,7 @@ defmodule Tailcall.Billing.TaxRates.TaxRateTest do
 
       changes_keys = changeset.changes |> Map.keys()
 
-      refute :user_id in changes_keys
+      refute :account_id in changes_keys
       refute :livemode in changes_keys
       assert :active in changes_keys
       assert :description in changes_keys
@@ -86,25 +86,35 @@ defmodule Tailcall.Billing.TaxRates.TaxRateTest do
     end
   end
 
-  # describe "delete_changeset/2" do
-  #   test "when deleted_at is nil, returns an invalid changeset" do
-  #     tax_rate = insert(:tax_rate)
+  describe "delete_changeset/2" do
+    test "when deleted_at is valid, returns an valid changeset" do
+      tax_rate = insert!(:tax_rate)
 
-  #     changeset = TaxRate.delete_changeset(tax_rate, %{})
+      utc_now = utc_now()
 
-  #     refute changeset.valid?
-  #     assert %{deleted_at: ["can't be blank"]} = errors_on(changeset)
-  #   end
+      changeset = TaxRate.delete_changeset(tax_rate, %{deleted_at: utc_now})
 
-  #   test "when deleted_at is valid, returns an valid changeset" do
-  #     tax_rate = insert(:tax_rate)
+      assert changeset.valid?
+      assert get_field(changeset, :deleted_at) == utc_now
+    end
 
-  #     changeset =
-  #       TaxRate.delete_changeset(tax_rate, %{
-  #         deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)
-  #       })
+    test "when deleted_at is nil, returns an invalid changeset" do
+      tax_rate = insert!(:tax_rate)
 
-  #     assert changeset.valid?
-  #   end
-  # end
+      changeset = TaxRate.delete_changeset(tax_rate, %{})
+
+      refute changeset.valid?
+      assert %{deleted_at: ["can't be blank"]} = errors_on(changeset)
+    end
+
+    test "when deleted_at is before created_at, returns an invalid changeset" do
+      tax_rate = insert!(:tax_rate, created_at: utc_now())
+
+      changeset = TaxRate.delete_changeset(tax_rate, %{deleted_at: utc_now() |> add(-1200)})
+
+      refute changeset.valid?
+
+      assert %{deleted_at: ["should be after or equal to created_at"]} = errors_on(changeset)
+    end
+  end
 end

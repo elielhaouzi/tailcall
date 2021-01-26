@@ -21,13 +21,13 @@ defmodule Tailcall.Billing.TaxRatesTest do
       refute changeset.valid?
     end
 
-    test "when user does not exist, returns an error tuple with an invalid changeset" do
-      tax_rate_params = params_for(:tax_rate, user_id: id())
+    test "when account does not exist, returns an error tuple with an invalid changeset" do
+      tax_rate_params = params_for(:tax_rate, account_id: id())
 
       assert {:error, changeset} = TaxRates.create_tax_rate(tax_rate_params)
 
       refute changeset.valid?
-      assert %{user: ["does not exist"]} = errors_on(changeset)
+      assert %{account: ["does not exist"]} = errors_on(changeset)
     end
   end
 

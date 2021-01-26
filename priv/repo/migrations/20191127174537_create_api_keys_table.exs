@@ -3,7 +3,7 @@ defmodule Accounts.Repo.Migrations.CreateApiKeysTable do
 
   def change do
     create table(:api_keys) do
-      add(:user_id, references(:users, on_delete: :nothing), null: false)
+      add(:account_id, references(:accounts, on_delete: :nothing), null: false)
 
       add(:created_at, :utc_datetime, null: false)
       add(:expired_at, :utc_datetime, null: true)
@@ -12,7 +12,7 @@ defmodule Accounts.Repo.Migrations.CreateApiKeysTable do
       add(:type, :string, null: false)
 
       timestamps()
-      add(:object, :binary, default: "api_key")
+      add(:object, :string, default: "api_key")
     end
 
     create(index(:api_keys, [:created_at]))

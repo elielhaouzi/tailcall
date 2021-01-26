@@ -3,7 +3,7 @@ defmodule Tailcall.Repo.Migrations.CreateTaxRatesTable do
 
   def change do
     create table(:tax_rates) do
-      add(:user_id, :bigint, null: false)
+      add(:account_id, :bigint, null: false)
 
       add(:active, :boolean, null: false)
       add(:created_at, :utc_datetime, null: false)
@@ -20,7 +20,8 @@ defmodule Tailcall.Repo.Migrations.CreateTaxRatesTable do
       add(:object, :string, default: "tax_rate")
     end
 
-    create(index(:tax_rates, [:user_id]))
+    create(index(:tax_rates, [:account_id]))
+
     create(index(:tax_rates, [:active]))
     create(index(:tax_rates, [:created_at]))
     create(index(:tax_rates, [:deleted_at]))

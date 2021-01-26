@@ -3,7 +3,7 @@ defmodule Tailcall.Repo.Migrations.CreateEventsTable do
 
   def change do
     create table(:events) do
-      add(:user_id, :bigint)
+      add(:account_id, :bigint, null: false)
 
       add(:api_version, :string, null: false)
       add(:created_at, :utc_datetime, null: false)
@@ -18,7 +18,7 @@ defmodule Tailcall.Repo.Migrations.CreateEventsTable do
       add(:object, :string, default: "event")
     end
 
-    create(index(:events, [:user_id]))
+    create(index(:events, [:account_id]))
 
     create(index(:events, [:created_at]))
     create(index(:events, [:livemode]))

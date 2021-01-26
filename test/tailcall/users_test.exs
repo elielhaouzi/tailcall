@@ -1,9 +1,9 @@
-defmodule Tailcall.Accounts.UsersTest do
+defmodule Tailcall.UsersTest do
   use ExUnit.Case, async: true
   use Tailcall.DataCase
 
-  alias Tailcall.Accounts.Users
-  alias Tailcall.Accounts.Users.User
+  alias Tailcall.Users
+  alias Tailcall.Users.User
 
   describe "list_users/1" do
     test "list_users" do
@@ -27,7 +27,8 @@ defmodule Tailcall.Accounts.UsersTest do
         [id: user.id],
         [id: [user.id]],
         [email: user.email],
-        [name: user.name]
+        [name: user.name],
+        [ongoing_at: user.created_at]
       ]
       |> Enum.each(fn filter ->
         assert %{total: 1, data: [_user]} = Users.list_users(filters: filter)
@@ -37,7 +38,9 @@ defmodule Tailcall.Accounts.UsersTest do
         [id: shortcode_id()],
         [id: [shortcode_id()]],
         [email: "non existing email"],
-        [name: "non existing name"]
+        [name: "non existing name"],
+        [ongoing_at: user.created_at |> add(-1200)],
+        [deleted_at: user.created_at |> add(-1200)]
       ]
       |> Enum.each(fn filter ->
         assert %{total: 0, data: []} = Users.list_users(filters: filter)
@@ -128,6 +131,38 @@ defmodule Tailcall.Accounts.UsersTest do
 
       refute changeset.valid?
       assert %{name: ["can't be blank"]} = errors_on(changeset)
+    end
+
+    test "when user is soft deleted, raises a FunctionClauseError" do
+      user = build(:user) |> make_deleted() |> insert!()
+
+      assert_raise FunctionClauseError, fn ->
+        Users.update_user(user, %{})
+      end
+    end
+  end
+
+  describe "delete_user/2" do
+    test "when data is valid, soft delete the user" do
+      user = insert!(:user)
+      utc_now = utc_now()
+      assert {:ok, %User{deleted_at: ^utc_now}} = Users.delete_user(user, utc_now)
+    end
+
+    test "when data is invalid, returns an invalid changeset" do
+      user = insert!(:user)
+
+      assert {:error, changeset} = Users.delete_user(user, user.created_at |> add(-1200))
+
+      refute changeset.valid?
+    end
+
+    test "when user is soft deleted, raises a FunctionClauseError" do
+      user = build(:user) |> make_deleted() |> insert!()
+
+      assert_raise FunctionClauseError, fn ->
+        Users.delete_user(user, utc_now())
+      end
     end
   end
 end

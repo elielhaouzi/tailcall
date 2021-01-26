@@ -19,7 +19,7 @@ defmodule Tailcall.Billing.Prices.Price do
 
   alias Tailcall.Extensions.Ecto.Changeset, as: TailcallExtensionsEctoChangeset
 
-  alias Tailcall.Accounts.Users.User
+  alias Tailcall.Accounts.Account
 
   alias Tailcall.Billing.Products.Product
   alias Tailcall.Billing.Prices.PriceTier
@@ -27,6 +27,8 @@ defmodule Tailcall.Billing.Prices.Price do
   @one_is_the_default_recurring_interval_count 1
 
   @type t :: %__MODULE__{
+          account: Account.t(),
+          account_id: binary,
           active: boolean,
           billing_scheme: binary,
           created_at: DateTime.t(),
@@ -51,16 +53,14 @@ defmodule Tailcall.Billing.Prices.Price do
           type: binary,
           unit_amount: integer | nil,
           unit_amount_decimal: Decimal.t() | nil,
-          updated_at: DateTime.t(),
-          user: User.t(),
-          user_id: binary
+          updated_at: DateTime.t()
         }
 
   @primary_key {:id, Shortcode.Ecto.ID, prefix: "prod", autogenerate: true}
   schema "prices" do
     field(:object, :string, default: "price")
 
-    belongs_to(:user, User, type: Shortcode.Ecto.ID, prefix: "usr")
+    belongs_to(:account, Account, type: Shortcode.Ecto.ID, prefix: "acct")
     belongs_to(:product, Product, type: Shortcode.Ecto.ID, prefix: "prod")
 
     field(:active, :boolean, default: true)
@@ -68,7 +68,7 @@ defmodule Tailcall.Billing.Prices.Price do
     field(:created_at, :utc_datetime)
     field(:currency, :string)
     field(:livemode, :boolean)
-    field(:metadata, :map)
+    field(:metadata, :map, default: %{})
     field(:nickname, :string)
     field(:recurring_aggregate_usage, :string)
     field(:recurring_interval, :string)
@@ -125,7 +125,7 @@ defmodule Tailcall.Billing.Prices.Price do
   def create_changeset(%__MODULE__{} = price, attrs) when is_map(attrs) do
     price
     |> cast(attrs, [
-      :user_id,
+      :account_id,
       :product_id,
       :active,
       :billing_scheme,
@@ -145,7 +145,7 @@ defmodule Tailcall.Billing.Prices.Price do
       :unit_amount_decimal
     ])
     |> validate_required([
-      :user_id,
+      :account_id,
       :product_id,
       :active,
       :created_at,

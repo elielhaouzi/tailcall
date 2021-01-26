@@ -4,10 +4,10 @@ defmodule Tailcall.Factory.Billing.Product do
   defmacro __using__(_opts) do
     quote do
       def build(:product) do
-        user = insert!(:user)
+        account = insert!(:account)
 
         %Product{
-          user_id: user.id,
+          account_id: account.id,
           description: "description_#{System.unique_integer()}",
           caption: "caption_#{System.unique_integer()}",
           created_at: utc_now(),

@@ -40,8 +40,9 @@ defmodule Tailcall.Audit.Events do
   @doc """
   Returns an audit event struct with pre-filled fields.
   """
-  @spec new_event(%{:livemode => boolean, :user_id => binary, optional(atom) => any}) :: Event.t()
-  def new_event(%{livemode: _, user_id: _} = fields) do
+  @spec new_event(%{:livemode => boolean, :account_id => binary, optional(atom) => any}) ::
+          Event.t()
+  def new_event(%{livemode: _, account_id: _} = fields) do
     struct!(Event, fields)
   end
 
