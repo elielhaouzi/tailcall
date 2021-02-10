@@ -34,13 +34,14 @@ defmodule Tailcall.Factory.Billing.Price do
         })
       end
 
-      def make_type_recurring(%Price{} = price) do
+      def make_type_recurring(%Price{} = price, attrs \\ %{}) do
         price
         |> Map.merge(%{
           type: Price.types().recurring,
           recurring_interval: Price.recurring_intervals().day,
           recurring_interval_count: 1
         })
+        |> Map.merge(attrs)
       end
 
       def make_recurring_usage_type_licensed(%Price{} = price) do
@@ -77,7 +78,10 @@ defmodule Tailcall.Factory.Billing.Price do
 
       def make_billing_scheme_per_unit(%Price{} = price) do
         price
-        |> Map.merge(%{billing_scheme: Price.billing_schemes().per_unit, unit_amount: 1_000})
+        |> Map.merge(%{
+          billing_scheme: Price.billing_schemes().per_unit,
+          unit_amount: 1_000
+        })
       end
 
       def make_billing_scheme_tiered(%Price{} = price) do

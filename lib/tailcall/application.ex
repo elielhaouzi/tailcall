@@ -7,14 +7,11 @@ defmodule Tailcall.Application do
 
   def start(_type, _args) do
     children = [
-      # Start the Ecto repository
       Tailcall.Repo,
-      # Start the Telemetry supervisor
       TailcallWeb.Telemetry,
-      # Start the PubSub system
       {Phoenix.PubSub, name: Tailcall.PubSub},
-      # Start the Endpoint (http/https)
-      TailcallWeb.Endpoint
+      TailcallWeb.Endpoint,
+      {Oban, oban_config()}
       # Start a worker by calling: Tailcall.Worker.start_link(arg)
       # {Tailcall.Worker, arg}
     ]
@@ -30,5 +27,9 @@ defmodule Tailcall.Application do
   def config_change(changed, _new, removed) do
     TailcallWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  defp oban_config do
+    Application.get_env(:tailcall, Oban)
   end
 end

@@ -16,9 +16,8 @@ defmodule Tailcall.Factory do
 
   use Tailcall.Factory.Billing.Product
   use Tailcall.Factory.Billing.Price
-  # use Tailcall.Factory.Subscription
-
-  # use Tailcall.Factory.Invoice
+  use Tailcall.Factory.Billing.Subscription
+  use Tailcall.Factory.Billing.Invoice
 
   @spec uuid :: <<_::288>>
   def uuid(), do: Ecto.UUID.generate()

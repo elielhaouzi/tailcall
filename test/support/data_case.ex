@@ -18,6 +18,8 @@ defmodule Tailcall.DataCase do
 
   using do
     quote do
+      use Oban.Testing, repo: Tailcall.Repo
+
       alias Tailcall.Repo
 
       import Ecto

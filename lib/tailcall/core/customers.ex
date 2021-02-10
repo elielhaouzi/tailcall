@@ -48,8 +48,10 @@ defmodule Tailcall.Core.Customers do
   def get_customer!(id) when is_binary(id), do: Customer |> Repo.get!(id)
 
   @spec customer_exists?(binary) :: boolean
-  def customer_exists?(id) when is_binary(id) do
-    [filters: [id: id]]
+  def customer_exists?(id, opts \\ []) when is_binary(id) do
+    filters = opts |> Keyword.get(:filters, []) |> Keyword.put(:id, id)
+
+    [filters: filters]
     |> customer_queryable()
     |> Repo.exists?()
   end

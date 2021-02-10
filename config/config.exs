@@ -11,6 +11,10 @@ config :annacl,
   repo: Tailcall.Repo,
   superadmin_role_name: "superadmin"
 
+config :tailcall, Oban,
+  repo: Tailcall.Repo,
+  queues: [default: 10, subscriptions: 10, invoices: 10]
+
 config :tailcall, TailcallWeb.Endpoint,
   http: [transport_options: [socket_opts: [:inet6]]],
   render_errors: [view: TailcallWeb.ErrorView, accepts: ~w(html json), layout: false],

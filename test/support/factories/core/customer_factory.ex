@@ -28,7 +28,7 @@ defmodule Tailcall.Factory.Core.Customers.Customer do
 
       def build(:customer_invoice_settings) do
         %InvoiceSettings{
-          custom_fields: [build(:customer_invoice_settings_custom_field)],
+          custom_fields: [build(:customer_invoice_settings_custom_field) |> Map.from_struct()],
           footer: "footer_#{System.unique_integer()}"
         }
       end

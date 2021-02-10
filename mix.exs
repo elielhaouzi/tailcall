@@ -55,7 +55,9 @@ defmodule Tailcall.MixProject do
       {:antl_utils_elixir, "~> 0.2.0"},
       {:antl_utils_ecto, "~> 1.2.1", override: true},
       {:shortcode, "~> 0.5.0"},
-      {:timex, "~> 3.1"}
+      {:oban, "~> 2.4"},
+      {:timex, "~> 3.6"},
+      {:money, "~> 1.8"}
     ]
   end
 

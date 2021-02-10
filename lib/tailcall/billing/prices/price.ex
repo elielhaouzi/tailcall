@@ -56,7 +56,7 @@ defmodule Tailcall.Billing.Prices.Price do
           updated_at: DateTime.t()
         }
 
-  @primary_key {:id, Shortcode.Ecto.ID, prefix: "prod", autogenerate: true}
+  @primary_key {:id, Shortcode.Ecto.ID, prefix: "price", autogenerate: true}
   schema "prices" do
     field(:object, :string, default: "price")
 
@@ -86,15 +86,15 @@ defmodule Tailcall.Billing.Prices.Price do
     timestamps(type: :utc_datetime)
   end
 
-  @spec billing_schemes :: %{per_unit: binary(), tiered: binary()}
+  @spec billing_schemes :: %{per_unit: binary, tiered: binary}
   def billing_schemes, do: %{per_unit: "per_unit", tiered: "tiered"}
 
-  @spec currencies :: %{eur: binary(), ils: binary(), usd: binary()}
+  @spec currencies :: %{eur: binary, ils: binary, usd: binary}
   def currencies, do: %{eur: "eur", ils: "ils", usd: "usd"}
 
   @spec recurring_aggregate_usages :: %{
-          last_during_period: binary(),
-          last_ever: binary(),
+          last_during_period: binary,
+          last_ever: binary,
           max: binary(),
           sum: binary()
         }
@@ -106,19 +106,27 @@ defmodule Tailcall.Billing.Prices.Price do
       sum: "sum"
     }
 
-  @spec recurring_intervals :: %{day: binary(), week: binary(), month: binary(), year: binary()}
-  def recurring_intervals, do: %{day: "day", week: "week", month: "month", year: "year"}
+  @spec recurring_intervals :: %{
+          minute: binary,
+          hour: binary,
+          day: binary,
+          week: binary,
+          month: binary,
+          year: binary
+        }
+  def recurring_intervals,
+    do: %{minute: "minute", hour: "hour", day: "day", week: "week", month: "month", year: "year"}
 
-  @spec recurring_usage_types :: %{licensed: binary(), metered: binary(), rated: binary()}
+  @spec recurring_usage_types :: %{licensed: binary, metered: binary, rated: binary}
   def recurring_usage_types, do: %{licensed: "licensed", metered: "metered", rated: "rated"}
 
-  @spec tiers_modes :: %{graduated: binary(), volume: binary()}
+  @spec tiers_modes :: %{graduated: binary, volume: binary}
   def tiers_modes, do: %{graduated: "graduated", volume: "volume"}
 
-  @spec transform_quantity_rounds :: %{down: binary(), up: binary()}
+  @spec transform_quantity_rounds :: %{down: binary, up: binary}
   def transform_quantity_rounds, do: %{down: "down", up: "up"}
 
-  @spec types :: %{one_time: binary(), recurring: binary()}
+  @spec types :: %{one_time: binary, recurring: binary}
   def types, do: %{one_time: "one_time", recurring: "recurring"}
 
   @spec create_changeset(Price.t(), map()) :: Ecto.Changeset.t()
