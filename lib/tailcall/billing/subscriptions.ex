@@ -16,7 +16,11 @@ defmodule Tailcall.Billing.Subscriptions do
   alias Tailcall.Billing.Prices.Price
   alias Tailcall.Billing.Invoices
   alias Tailcall.Billing.Subscriptions.{Subscription, SubscriptionItem, SubscriptionQueryable}
-  alias Tailcall.Billing.Subscriptions.Workers.RenewSubscriptionWorker
+
+  alias Tailcall.Billing.Subscriptions.Workers.{
+    RenewSubscriptionWorker,
+    PastDueSubscriptionWorker
+  }
 
   @default_order_by [asc: :id]
   @default_page_number 1
@@ -42,7 +46,7 @@ defmodule Tailcall.Billing.Subscriptions do
     %{total: count, data: subscriptions}
   end
 
-  @spec get_subscription!(binary, keyword) :: Subscription.t() | nil
+  @spec get_subscription!(binary, keyword) :: Subscription.t()
   def get_subscription!(id, opts \\ []) when is_binary(id) do
     filters = opts |> Keyword.get(:filters, []) |> Keyword.put(:id, id)
 
@@ -60,6 +64,15 @@ defmodule Tailcall.Billing.Subscriptions do
     |> Keyword.put(:filters, filters)
     |> subscription_queryable()
     |> Repo.one()
+  end
+
+  @spec subscription_exists?(binary, keyword) :: boolean
+  def subscription_exists?(id, opts \\ []) when is_binary(id) do
+    filters = opts |> Keyword.get(:filters, []) |> Keyword.put(:id, id)
+
+    [filters: filters]
+    |> subscription_queryable()
+    |> Repo.exists?()
   end
 
   @spec create_subscription(map()) :: {:ok, Subscription.t()} | {:error, Ecto.Changeset.t()}
@@ -94,6 +107,10 @@ defmodule Tailcall.Billing.Subscriptions do
     |> Oban.insert(:renew_subscription_job, fn %{subscription_with_status: subscription} ->
       %{id: subscription.id}
       |> RenewSubscriptionWorker.new(scheduled_at: subscription.next_period_start)
+    end)
+    |> Oban.insert(:past_due, fn %{subscription_with_status: subscription, invoice: invoice} ->
+      %{subscription_id: subscription.id, invoice_id: invoice.id}
+      |> PastDueSubscriptionWorker.new(scheduled_at: invoice.due_date)
     end)
     |> Repo.transaction()
     |> case do
@@ -204,6 +221,13 @@ defmodule Tailcall.Billing.Subscriptions do
       {:ok, %{subscription: %Subscription{} = subscription}} -> {:ok, subscription}
       {:error, _, changeset, _} -> {:error, changeset}
     end
+  end
+
+  @spec set_status!(Subscription.t(), binary) :: Subscription.t()
+  def set_status!(%Subscription{} = subscription, status) when is_binary(status) do
+    subscription
+    |> Subscription.update_changeset(%{status: status})
+    |> Repo.update!()
   end
 
   defp validate_create_changes(%Ecto.Changeset{valid?: false} = changeset), do: changeset
@@ -419,6 +443,7 @@ defmodule Tailcall.Billing.Subscriptions do
       customer_id: subscription.customer_id,
       subscription_id: subscription.id,
       billing_reason: billing_reason,
+      collection_method: subscription.collection_method,
       currency: currency(subscription),
       line_items: subscription_items |> Enum.map(&build_invoice_line_item(subscription, &1)),
       livemode: subscription.livemode,

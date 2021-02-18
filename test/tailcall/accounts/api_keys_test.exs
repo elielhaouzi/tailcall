@@ -78,7 +78,7 @@ defmodule Tailcall.Accounts.ApiKeysTest do
     end
 
     test "when data is invalid, returns an error tuple with an invalid changeset" do
-      api_key_params = params_for(:api_key, account_id: nil)
+      api_key_params = params_for(:api_key, livemode: nil)
 
       assert {:error, changeset} = ApiKeys.create_api_key(api_key_params)
 

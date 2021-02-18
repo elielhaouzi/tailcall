@@ -3,7 +3,7 @@ defmodule Tailcall.Factory.Users.User do
 
   defmacro __using__(_opts) do
     quote do
-      def build(:user) do
+      def build(:user, attrs) do
         {:ok, performer} = Annacl.create_performer()
 
         %User{
@@ -12,6 +12,7 @@ defmodule Tailcall.Factory.Users.User do
           name: "name_#{System.unique_integer([:positive])}",
           performer_id: performer.id
         }
+        |> struct!(attrs)
       end
 
       def make_deleted(%User{} = user), do: %{user | deleted_at: utc_now()}

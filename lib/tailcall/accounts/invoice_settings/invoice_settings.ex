@@ -1,16 +1,14 @@
 defmodule Tailcall.Accounts.InvoiceSettings do
   use Ecto.Schema
 
-  import Ecto.Changeset, only: [cast: 3]
+  import Ecto.Changeset, only: [cast: 3, validate_inclusion: 3]
 
   @type t :: %__MODULE__{}
 
   @primary_key false
   embedded_schema do
-    field(:days_until_due, :integer)
+    field(:days_until_due, :integer, default: 30)
     field(:invoice_prefix, :string)
-    field(:next_invoice_sequence_livemode, :integer, default: 1)
-    field(:next_invoice_sequence_testmode, :integer, default: 1)
     field(:numbering_scheme, :string, default: "account_level")
   end
 
@@ -27,5 +25,6 @@ defmodule Tailcall.Accounts.InvoiceSettings do
       :next_invoice_sequence_testmode,
       :numbering_scheme
     ])
+    |> validate_inclusion(:numbering_scheme, Map.values(numbering_scheme()))
   end
 end

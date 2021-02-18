@@ -41,11 +41,23 @@ defmodule Tailcall.Core.Customers do
     |> Repo.insert()
   end
 
-  @spec get_customer(binary) :: Customer.t() | nil
-  def get_customer(id) when is_binary(id), do: Customer |> Repo.get(id)
+  @spec get_customer(binary, keyword) :: Customer.t() | nil
+  def get_customer(id, opts \\ []) when is_binary(id) and is_list(opts) do
+    filters = opts |> Keyword.get(:filters, []) |> Keyword.put(:id, id)
 
-  @spec get_customer!(binary) :: Customer.t() | nil
-  def get_customer!(id) when is_binary(id), do: Customer |> Repo.get!(id)
+    [filters: filters]
+    |> customer_queryable()
+    |> Repo.one()
+  end
+
+  @spec get_customer!(binary, keyword) :: Customer.t() | nil
+  def get_customer!(id, opts \\ []) when is_binary(id) and is_list(opts) do
+    filters = opts |> Keyword.get(:filters, []) |> Keyword.put(:id, id)
+
+    [filters: filters]
+    |> customer_queryable()
+    |> Repo.one!()
+  end
 
   @spec customer_exists?(binary) :: boolean
   def customer_exists?(id, opts \\ []) when is_binary(id) do

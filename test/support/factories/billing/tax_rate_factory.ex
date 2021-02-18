@@ -3,11 +3,12 @@ defmodule Tailcall.Factory.Billing.TaxRate do
 
   defmacro __using__(_opts) do
     quote do
-      def build(:tax_rate) do
-        account = insert!(:account)
+      def build(:tax_rate, attrs) do
+        {account_id, attrs} = Keyword.pop(attrs, :account_id)
+        account_id = account_id || Map.get(insert!(:account), :id)
 
         %TaxRate{
-          account_id: account.id,
+          account_id: account_id,
           created_at: utc_now(),
           description: "description_#{System.unique_integer()}",
           display_name: "display_name_#{System.unique_integer()}",
@@ -18,6 +19,7 @@ defmodule Tailcall.Factory.Billing.TaxRate do
         }
         |> make_active()
         |> make_inclusive()
+        |> struct!(attrs)
       end
 
       def make_active(%TaxRate{} = tax_rate), do: %{tax_rate | active: true}

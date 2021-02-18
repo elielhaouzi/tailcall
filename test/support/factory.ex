@@ -1,6 +1,8 @@
 defmodule Tailcall.Factory do
   alias Tailcall.Repo
 
+  use Tailcall.Factory.Sequences.Sequence
+
   use Tailcall.Factory.Users.User
 
   use Tailcall.Factory.Accounts.Account
@@ -53,9 +55,7 @@ defmodule Tailcall.Factory do
   end
 
   @spec build(atom, Enum.t()) :: %{:__struct__ => atom, optional(atom) => any}
-  def build(factory_name, attributes) do
-    factory_name |> build() |> struct!(attributes)
-  end
+  def build(factory_name), do: build(factory_name, [])
 
   @spec insert!(atom, Enum.t()) :: any
   def insert!(factory_name, attributes)
@@ -68,7 +68,5 @@ defmodule Tailcall.Factory do
     factory_name |> build([]) |> insert!()
   end
 
-  def insert!(schema) when is_struct(schema) do
-    schema |> Repo.insert!()
-  end
+  def insert!(schema) when is_struct(schema), do: schema |> Repo.insert!()
 end

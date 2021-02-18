@@ -3,11 +3,12 @@ defmodule Tailcall.Factory.Billing.Product do
 
   defmacro __using__(_opts) do
     quote do
-      def build(:product) do
-        account = insert!(:account)
+      def build(:product, attrs) do
+        {account_id, attrs} = Keyword.pop(attrs, :account_id)
+        account_id = account_id || Map.get(insert!(:account), :id)
 
         %Product{
-          account_id: account.id,
+          account_id: account_id,
           description: "description_#{System.unique_integer()}",
           caption: "caption_#{System.unique_integer()}",
           created_at: utc_now(),
@@ -20,6 +21,7 @@ defmodule Tailcall.Factory.Billing.Product do
           url: "url_#{System.unique_integer()}"
         }
         |> make_active()
+        |> struct!(attrs)
       end
 
       def make_active(%Product{} = product), do: %{product | active: true}

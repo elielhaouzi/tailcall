@@ -5,11 +5,12 @@ defmodule Tailcall.Factory.Core.Customers.Customer do
 
   defmacro __using__(_opts) do
     quote do
-      def build(:customer) do
-        account = insert!(:account)
+      def build(:customer, attrs) do
+        {account_id, attrs} = Keyword.pop(attrs, :account_id)
+        account_id = account_id || Map.get(insert!(:account), :id)
 
         %Customer{
-          account_id: account.id,
+          account_id: account_id,
           currency: "ils",
           created_at: utc_now(),
           description: "description_#{System.unique_integer()}",
@@ -22,22 +23,25 @@ defmodule Tailcall.Factory.Core.Customers.Customer do
           phone: "phone_#{System.unique_integer()}",
           preferred_locales: ["he"]
         }
+        |> struct!(attrs)
       end
 
       def make_deleted(%Customer{} = customer), do: %{customer | deleted_at: utc_now()}
 
-      def build(:customer_invoice_settings) do
+      def build(:customer_invoice_settings, attrs) do
         %InvoiceSettings{
           custom_fields: [build(:customer_invoice_settings_custom_field) |> Map.from_struct()],
           footer: "footer_#{System.unique_integer()}"
         }
+        |> struct!(attrs)
       end
 
-      def build(:customer_invoice_settings_custom_field) do
+      def build(:customer_invoice_settings_custom_field, attrs) do
         %CustomField{
           name: "name_#{System.unique_integer()}",
           value: "value_#{System.unique_integer()}"
         }
+        |> struct!(attrs)
       end
     end
   end

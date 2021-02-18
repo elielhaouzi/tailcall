@@ -9,6 +9,7 @@ defmodule Tailcall.Billing.SubscriptionsTest do
   alias Tailcall.Billing.Subscriptions
   alias Tailcall.Billing.Subscriptions.Subscription
   alias Tailcall.Billing.Subscriptions.Workers.RenewSubscriptionWorker
+  alias Tailcall.Billing.Subscriptions.Workers.PastDueSubscriptionWorker
 
   @moduletag :subscriptions
 
@@ -203,11 +204,18 @@ defmodule Tailcall.Billing.SubscriptionsTest do
         args: %{id: subscription.id},
         scheduled_at: subscription.next_period_start
       )
+
+      assert_enqueued(
+        worker: PastDueSubscriptionWorker,
+        args: %{subscription_id: subscription.id, invoice_id: subscription.latest_invoice.id},
+        scheduled_at: subscription.latest_invoice.due_date
+      )
     end
 
     test "when the create_subscription failed, does not enqueue a job" do
       assert {:error, _changeset} = Subscriptions.create_subscription(%{})
       refute_enqueued(worker: Tailcall.Billing.Subscriptions.Workers.RenewSubscriptionWorker)
+      refute_enqueued(worker: Tailcall.Billing.Subscriptions.Workers.PastDueSubscriptionWorker)
     end
 
     test "when account does not exist, returns an error tuple with an invalid changeset" do
@@ -440,31 +448,16 @@ defmodule Tailcall.Billing.SubscriptionsTest do
     end
 
     test "RenewSubscriptionWorker renew the subscription" do
-      account = insert!(:account)
+      subscription = insert!(:subscription, status: Subscription.statuses().active)
 
-      price =
-        build(:price, account_id: account.id)
-        |> make_recurring_usage_type_licensed()
-        |> make_billing_scheme_per_unit()
-        |> insert!()
+      assert {:ok, _} = perform_job(RenewSubscriptionWorker, %{"id" => subscription.id})
 
-      customer = insert!(:customer, account_id: account.id)
+      subscription_cycle_status = Invoice.billing_reasons().subscription_cycle
 
-      subscription_factory =
-        insert!(:subscription,
-          account_id: account.id,
-          customer_id: customer.id,
-          items: [build(:subscription_item, price_id: price.id, quantity: 1)],
-          status: Subscription.statuses().active
-        )
-
-      assert {:ok, _} = perform_job(RenewSubscriptionWorker, %{"id" => subscription_factory.id})
-
-      subscription =
-        Subscriptions.get_subscription!(subscription_factory.id, includes: [:latest_invoice])
-
-      assert subscription.latest_invoice.billing_reason ==
-               Invoice.billing_reasons().subscription_cycle
+      assert %{latest_invoice: %{billing_reason: ^subscription_cycle_status}} =
+               Subscriptions.get_subscription!(subscription.id,
+                 includes: [:latest_invoice]
+               )
     end
   end
 
@@ -506,6 +499,10 @@ defmodule Tailcall.Billing.SubscriptionsTest do
         RenewSubscriptionWorker.new(%{id: subscription_factory.id}, scheduled_at: end_at)
       )
 
+      Oban.insert!(
+        PastDueSubscriptionWorker.new(%{id: subscription_factory.id}, scheduled_at: end_at)
+      )
+
       assert {:ok, %Subscription{} = subscription} =
                Subscriptions.cancel_subscription(subscription_factory, %{
                  cancel_at_period_end: true,
@@ -520,7 +517,17 @@ defmodule Tailcall.Billing.SubscriptionsTest do
 
       assert_in_delta DateTime.to_unix(subscription.canceled_at), DateTime.to_unix(utc_now()), 5
 
-      assert [] = all_enqueued(worker: RenewSubscriptionWorker, args: %{id: subscription.id})
+      assert [] =
+               all_enqueued(
+                 worker: RenewSubscriptionWorker,
+                 args: %{id: subscription.id}
+               )
+
+      assert [_job] =
+               all_enqueued(
+                 worker: PastDueSubscriptionWorker,
+                 args: %{id: subscription.id}
+               )
     end
   end
 end

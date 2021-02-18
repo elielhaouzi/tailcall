@@ -4,13 +4,16 @@ defmodule Tailcall.Factory.Billing.Price do
 
   defmacro __using__(_opts) do
     quote do
-      def build(:price) do
-        account = insert!(:account)
-        product = insert!(:product, account_id: account.id)
+      def build(:price, attrs) do
+        {account_id, attrs} = Keyword.pop(attrs, :account_id)
+        account_id = account_id || Map.get(insert!(:account), :id)
+
+        {product_id, attrs} = Keyword.pop(attrs, :product_id)
+        product_id = product_id || Map.get(insert!(:product, account_id: account_id), :id)
 
         %Price{
-          account_id: account.id,
-          product_id: product.id,
+          account_id: account_id,
+          product_id: product_id,
           created_at: utc_now(),
           currency: Price.currencies().ils,
           livemode: false,
@@ -18,6 +21,7 @@ defmodule Tailcall.Factory.Billing.Price do
         }
         |> make_active()
         |> make_type_recurring()
+        |> struct!(attrs)
       end
 
       def make_active(%Price{} = price), do: %{price | active: true}
@@ -113,8 +117,8 @@ defmodule Tailcall.Factory.Billing.Price do
         })
       end
 
-      def build(:price_tier) do
-        %PriceTier{}
+      def build(:price_tier, attrs) do
+        %PriceTier{} |> struct!(attrs)
       end
     end
   end

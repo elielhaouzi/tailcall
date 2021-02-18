@@ -3,7 +3,7 @@ defmodule Tailcall.Factory.Audit.Event do
 
   defmacro __using__(_opts) do
     quote do
-      def build(:event) do
+      def build(:event, attrs) do
         %Event{
           account_id: shortcode_id("acct"),
           api_version: "api_version",
@@ -15,6 +15,7 @@ defmodule Tailcall.Factory.Audit.Event do
           resource_id: "resource_id_#{System.unique_integer([:positive])}",
           resource_type: "resource_type_#{System.unique_integer([:positive])}"
         }
+        |> struct!(attrs)
       end
     end
   end

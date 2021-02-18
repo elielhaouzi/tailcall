@@ -3,6 +3,7 @@ defmodule Tailcall.Accounts.AccountsTest do
   use Tailcall.DataCase
 
   alias Tailcall.Accounts
+  alias Tailcall.Accounts.Account
   alias Tailcall.Accounts.ApiKeys.ApiKey
 
   describe "authenticate/1" do
@@ -32,8 +33,7 @@ defmodule Tailcall.Accounts.AccountsTest do
     end
 
     test "with an expired existing key returns :forbidden" do
-      api_key_params = build(:api_key) |> make_expired() |> params_for()
-      api_key = insert!(:api_key, api_key_params)
+      api_key = build(:api_key) |> make_expired() |> insert!()
 
       assert {:error, :forbidden} = Accounts.authenticate(%{"api_key" => api_key.secret})
     end
@@ -45,6 +45,24 @@ defmodule Tailcall.Accounts.AccountsTest do
       api_key = insert!(:api_key, livemode: livemode)
 
       assert Accounts.livemode?(api_key) == livemode
+    end
+  end
+
+  describe "create_account/1" do
+    test "when data is valid, creates the user" do
+      account_params = params_for(:account)
+
+      assert {:ok, %Account{} = account} = Accounts.create_account(account_params)
+      assert Tailcall.Sequences.sequence_exists?(account.id, true)
+      assert Tailcall.Sequences.sequence_exists?(account.id, false)
+    end
+
+    test "when data is invalid, returns an error tuple with an invalid changeset" do
+      account_params = params_for(:account) |> Map.put(:api_version, nil)
+
+      assert {:error, changeset} = Accounts.create_account(account_params)
+
+      refute changeset.valid?
     end
   end
 

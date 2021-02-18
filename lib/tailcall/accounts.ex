@@ -4,10 +4,13 @@ defmodule Tailcall.Accounts do
   """
 
   # import Ecto.Query, only: [order_by: 2]
-
+  alias Ecto.Multi
   alias Tailcall.Repo
 
-  alias Tailcall.Accounts.AccountQueryable
+  alias Tailcall.Sequences
+
+  alias Tailcall.Accounts.{Account, AccountQueryable}
+  alias Tailcall.Accounts.InvoiceSettings
   alias Tailcall.Accounts.ApiKeys
   alias Tailcall.Accounts.ApiKeys.ApiKey
 
@@ -35,18 +38,22 @@ defmodule Tailcall.Accounts do
   #   %{total: count, data: accounts}
   # end
 
-  # @spec create_account(map) :: {:ok, Account.t()} | {:error, Ecto.Changeset.t()}
-  # def create_account(attrs) do
-  #   %Account{}
-  #   |> Account.create_changeset(attrs)
-  #   |> Repo.insert()
-  # end
-
-  # @spec get_account(binary) :: Account.t() | nil
-  # def get_account(id) when is_binary(id), do: Account |> Repo.get(id)
-
-  # @spec get_account!(binary) :: Account.t()
-  # def get_account!(id) when is_binary(id), do: Account |> Repo.get!(id)
+  @spec create_account(map) :: {:ok, Account.t()} | {:error, Ecto.Changeset.t()}
+  def create_account(attrs) do
+    Multi.new()
+    |> Multi.insert(:account, %Account{} |> Account.create_changeset(attrs))
+    |> Multi.run(:sequence_livemode, fn _, %{account: account} ->
+      Sequences.create_sequence(account.id, true)
+    end)
+    |> Multi.run(:sequence_testmode, fn _, %{account: account} ->
+      Sequences.create_sequence(account.id, false)
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{account: account}} -> {:ok, account}
+      {:error, _, changeset, _} -> {:error, changeset}
+    end
+  end
 
   @spec authenticate(map) ::
           {:ok, %{api_key: map, account: map}} | {:error, :unauthorized | :forbidden}
@@ -68,6 +75,20 @@ defmodule Tailcall.Accounts do
   @spec livemode?(ApiKey.t()) :: boolean
   def livemode?(%ApiKey{livemode: livemode}), do: livemode
 
+  @spec get_account!(binary) :: Account.t()
+  def get_account!(id) when is_binary(id) do
+    [filters: [id: id]]
+    |> account_queryable()
+    |> Repo.one!()
+  end
+
+  @spec get_account(binary) :: Account.t() | nil
+  def get_account(id) when is_binary(id) do
+    [filters: [id: id]]
+    |> account_queryable()
+    |> Repo.one()
+  end
+
   @spec account_exists?(binary) :: boolean
   def account_exists?(id) when is_binary(id) do
     [filters: [id: id]]
@@ -75,7 +96,33 @@ defmodule Tailcall.Accounts do
     |> Repo.exists?()
   end
 
-  defp account_queryable(opts) do
+  @spec days_until_due(Account.t()) :: integer
+  def days_until_due(%Account{invoice_settings: %InvoiceSettings{days_until_due: days_until_due}}),
+    do: days_until_due
+
+  @spec invoice_prefix(Account.t()) :: binary
+  def invoice_prefix(%Account{invoice_settings: %InvoiceSettings{invoice_prefix: invoice_prefix}}),
+    do: invoice_prefix
+
+  @spec numbering_scheme(Account.t()) :: binary
+  def numbering_scheme(%Account{
+        invoice_settings: %InvoiceSettings{numbering_scheme: numbering_scheme}
+      }),
+      do: numbering_scheme
+
+  @spec account_level_numbering_scheme?(Account.t()) :: boolean
+  def account_level_numbering_scheme?(%Account{} = account) do
+    numbering_scheme(account) ==
+      Tailcall.Accounts.InvoiceSettings.numbering_scheme().account_level
+  end
+
+  @spec next_invoice_sequence!(Account.t(), boolean) :: integer
+  def next_invoice_sequence!(%Account{id: account_id}, livemode?) when is_boolean(livemode?) do
+    Sequences.next_value!(account_id, livemode?)
+  end
+
+  @spec account_queryable(keyword) :: Ecto.Queryable.t()
+  def account_queryable(opts \\ []) do
     filters = Keyword.get(opts, :filters, [])
 
     AccountQueryable.queryable()
