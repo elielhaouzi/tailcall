@@ -1,7 +1,7 @@
 defmodule Tailcall.Factory.Billing.Invoice do
   alias Tailcall.Billing.Prices.Price
   alias Tailcall.Billing.Subscriptions.Subscription
-  alias Tailcall.Billing.Invoices.{Invoice, InvoiceLineItem}
+  alias Tailcall.Billing.Invoices.{Invoice, InvoiceLineItem, StatusTransitions}
 
   defmacro __using__(_opts) do
     quote do
@@ -53,6 +53,7 @@ defmodule Tailcall.Factory.Billing.Invoice do
           period_end: utc_now,
           period_start: utc_now,
           status: Invoice.statuses().open,
+          status_transitions: build(:invoice_status_transitions, finalized_at: utc_now),
           total: 0
         }
         |> struct!(attrs)
@@ -73,6 +74,10 @@ defmodule Tailcall.Factory.Billing.Invoice do
           type: InvoiceLineItem.types().subscription
         }
         |> struct!(attrs)
+      end
+
+      def build(:invoice_status_transitions, attrs) do
+        %StatusTransitions{} |> struct!(attrs)
       end
     end
   end

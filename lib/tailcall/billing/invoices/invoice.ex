@@ -6,8 +6,10 @@ defmodule Tailcall.Billing.Invoices.Invoice do
       assoc_constraint: 2,
       cast: 3,
       cast_assoc: 3,
+      cast_embed: 2,
       get_field: 2,
       put_change: 3,
+      put_embed: 3,
       validate_inclusion: 3,
       validate_number: 3,
       validate_required: 2
@@ -16,7 +18,7 @@ defmodule Tailcall.Billing.Invoices.Invoice do
   alias Tailcall.Accounts.Account
   alias Tailcall.Core.Customers.Customer
   alias Tailcall.Billing.Subscriptions.Subscription
-  alias Tailcall.Billing.Invoices.InvoiceLineItem
+  alias Tailcall.Billing.Invoices.{InvoiceLineItem, StatusTransitions}
 
   @day_in_seconds 24 * 3600
 
@@ -41,6 +43,7 @@ defmodule Tailcall.Billing.Invoices.Invoice do
           inserted_at: DateTime.t(),
           object: binary,
           status: binary,
+          status_transitions: StatusTransitions.t(),
           total: integer,
           updated_at: DateTime.t()
         }
@@ -74,6 +77,7 @@ defmodule Tailcall.Billing.Invoices.Invoice do
     field(:period_end, :utc_datetime)
     field(:period_start, :utc_datetime)
     field(:status, :string)
+    embeds_one(:status_transitions, StatusTransitions, on_replace: :delete)
     field(:total, :integer)
 
     field(:deleted_at, :utc_datetime)
@@ -172,8 +176,17 @@ defmodule Tailcall.Billing.Invoices.Invoice do
     |> validate_inclusion(:collection_method, Map.values(collection_methods()))
     |> validate_due_date_according_to_collection_method()
     |> validate_inclusion(:status, Map.values(statuses()))
+    |> put_embed(:status_transitions, %{})
     |> cast_assoc(:line_items, required: true, with: &InvoiceLineItem.nested_create_changeset/2)
     |> assoc_constraint(:subscription)
+  end
+
+  @spec update_changeset(Invoice.t(), map()) :: Ecto.Changeset.t()
+  def update_changeset(%__MODULE__{} = invoice, attrs) when is_map(attrs) do
+    invoice
+    |> cast(attrs, [:auto_advance, :status])
+    |> cast_embed(:status_transitions)
+    |> validate_inclusion(:status, Map.values(statuses()))
   end
 
   defp validate_due_date_according_to_collection_method(

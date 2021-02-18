@@ -27,6 +27,7 @@ defmodule Tailcall.Repo.Migrations.CreateInvoicesTable do
       add(:period_end, :utc_datetime, null: false)
       add(:period_start, :utc_datetime, null: false)
       add(:status, :string, null: false)
+      add(:status_transitions, :map, null: false)
       add(:total, :integer, null: false)
 
       add(:deleted_at, :utc_datetime, null: true)

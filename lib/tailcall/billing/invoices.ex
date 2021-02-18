@@ -3,7 +3,7 @@ defmodule Tailcall.Billing.Invoices do
   The Invoices context.
   """
 
-  import Ecto.Query, only: [order_by: 2]
+  import Ecto.Query, only: [order_by: 2, where: 2, where: 3]
 
   alias Ecto.Multi
   alias Tailcall.Repo
@@ -96,7 +96,8 @@ defmodule Tailcall.Billing.Invoices do
     end
   end
 
-  @spec finalize_invoice(Invoice.t()) :: {:ok, Invoice.t()} | {:error, Ecto.Changeset.t()}
+  @spec finalize_invoice(Invoice.t()) ::
+          {:ok, Invoice.t()} | {:error, Ecto.Changeset.t() | :invalid_action}
   def finalize_invoice(
         %Invoice{status: "draft", account: account, number: invoice_number} = invoice
       ) do
@@ -113,10 +114,11 @@ defmodule Tailcall.Billing.Invoices do
         next_invoice_sequence |> Integer.to_string() |> String.pad_leading(5, "0")
 
       invoice
-      |> Ecto.Changeset.change(%{
+      |> Invoice.update_changeset(%{
         status: Invoice.statuses().open,
-        number: "#{invoice_prefix}-#{next_invoice_sequence}"
+        status_transitions: %{finalized_at: DateTime.utc_now()}
       })
+      |> Ecto.Changeset.put_change(:number, "#{invoice_prefix}-#{next_invoice_sequence}")
     end)
     |> Repo.transaction()
     |> case do
@@ -126,6 +128,108 @@ defmodule Tailcall.Billing.Invoices do
   end
 
   def finalize_invoice(%Invoice{}), do: {:error, :invalid_action}
+
+  @spec pay_invoice(Invoice.t(), map) ::
+          {:ok, Invoice.t()} | {:error, Ecto.Changeset.t() | :invalid_action}
+  def pay_invoice(%Invoice{status: "open"} = invoice, %{paid_out_of_band: true}) do
+    Multi.new()
+    |> Multi.update(:invoice, fn %{} ->
+      invoice
+      |> Invoice.update_changeset(%{
+        auto_advance: false,
+        status: Invoice.statuses().paid,
+        status_transitions: %{paid_at: DateTime.utc_now()}
+      })
+    end)
+    |> Multi.run(:cancel_automatic_collection_job, fn repo, %{invoice: invoice} ->
+      worker = Oban.Worker.to_string(AutomaticCollectionWorker)
+      args = %{"id" => invoice.id}
+
+      Oban.Job
+      |> where(worker: ^worker, queue: "invoices")
+      |> where([_job], fragment("args @> ?", ^args))
+      |> repo.one()
+      |> case do
+        %Oban.Job{id: id} -> {:ok, Oban.cancel_job(id)}
+        nil -> {:ok, nil}
+      end
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{invoice: invoice}} -> {:ok, invoice}
+      {:error, _, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  def pay_invoice(%Invoice{}, _), do: {:error, :invalid_action}
+
+  @spec void_invoice(Invoice.t()) ::
+          {:ok, Invoice.t()} | {:error, Ecto.Changeset.t() | :invalid_action}
+  def void_invoice(%Invoice{status: "open"} = invoice) do
+    Multi.new()
+    |> Multi.update(:invoice, fn %{} ->
+      invoice
+      |> Invoice.update_changeset(%{
+        auto_advance: false,
+        status: Invoice.statuses().void,
+        status_transitions: %{voided_at: DateTime.utc_now()}
+      })
+    end)
+    |> Multi.run(:cancel_automatic_collection_job, fn repo, %{invoice: invoice} ->
+      worker = Oban.Worker.to_string(AutomaticCollectionWorker)
+      args = %{"id" => invoice.id}
+
+      Oban.Job
+      |> where(worker: ^worker, queue: "invoices")
+      |> where([_job], fragment("args @> ?", ^args))
+      |> repo.one()
+      |> case do
+        %Oban.Job{id: id} -> {:ok, Oban.cancel_job(id)}
+        nil -> {:ok, nil}
+      end
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{invoice: invoice}} -> {:ok, invoice}
+      {:error, _, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  def void_invoice(%Invoice{}), do: {:error, :invalid_action}
+
+  @spec mark_invoice_uncollectible(Invoice.t()) ::
+          {:ok, Invoice.t()} | {:error, Ecto.Changeset.t() | :invalid_action}
+  def mark_invoice_uncollectible(%Invoice{status: "open"} = invoice) do
+    Multi.new()
+    |> Multi.update(:invoice, fn %{} ->
+      invoice
+      |> Invoice.update_changeset(%{
+        auto_advance: false,
+        status: Invoice.statuses().uncollectible,
+        status_transitions: %{marked_uncollectible_at: DateTime.utc_now()}
+      })
+    end)
+    |> Multi.run(:cancel_automatic_collection_job, fn repo, %{invoice: invoice} ->
+      worker = Oban.Worker.to_string(AutomaticCollectionWorker)
+      args = %{"id" => invoice.id}
+
+      Oban.Job
+      |> where(worker: ^worker, queue: "invoices")
+      |> where([_job], fragment("args @> ?", ^args))
+      |> repo.one()
+      |> case do
+        %Oban.Job{id: id} -> {:ok, Oban.cancel_job(id)}
+        nil -> {:ok, nil}
+      end
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{invoice: invoice}} -> {:ok, invoice}
+      {:error, _, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  def mark_invoice_uncollectible(%Invoice{}), do: {:error, :invalid_action}
 
   @spec past_due?(Invoice.t()) :: boolean
   def past_due?(%Invoice{due_date: due_date}),

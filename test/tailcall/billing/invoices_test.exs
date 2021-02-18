@@ -335,6 +335,8 @@ defmodule Tailcall.Billing.InvoincesTest do
 
   describe "finalize_invoice/1" do
     test "when status is draft, advances the invoice to open" do
+      utc_now = utc_now()
+
       account = insert!(:account)
       insert!(:sequence, name: account.id)
 
@@ -342,9 +344,13 @@ defmodule Tailcall.Billing.InvoincesTest do
         insert!(:invoice, account_id: account.id, status: Invoice.statuses().draft)
         |> Map.put(:account, account)
 
-      open_status = Invoice.statuses().open
+      assert {:ok, %Invoice{} = invoice} = Invoices.finalize_invoice(invoice)
 
-      assert {:ok, %Invoice{status: ^open_status}} = Invoices.finalize_invoice(invoice)
+      assert invoice.status == Invoice.statuses().open
+
+      assert_in_delta DateTime.to_unix(invoice.status_transitions.finalized_at),
+                      DateTime.to_unix(utc_now),
+                      5
     end
 
     test "when numbering_scheme is by account_level, invoice number is according to the account level" do
@@ -406,6 +412,7 @@ defmodule Tailcall.Billing.InvoincesTest do
       assert {:ok, _} = perform_job(AutomaticCollectionWorker, %{"id" => invoice.id})
 
       assert %Invoice{status: ^open_status} = Invoices.get_invoice!(invoice.id)
+      assert [] = all_enqueued(worker: AutomaticCollectionWorker, args: %{id: invoice.id})
     end
 
     test "when status is not draft, returns an error tuple" do
@@ -420,6 +427,88 @@ defmodule Tailcall.Billing.InvoincesTest do
       assert {:ok, _} = perform_job(AutomaticCollectionWorker, %{"id" => invoice.id})
 
       assert %Invoice{status: ^open_status} = Invoices.get_invoice!(invoice.id)
+    end
+  end
+
+  describe "pay_invoice/2" do
+    test "when is paid_out_of_band, updates the invoice status to paid" do
+      invoice = insert!(:invoice, auto_advance: true)
+
+      utc_now = utc_now()
+
+      Oban.insert!(AutomaticCollectionWorker.new(%{id: invoice.id}))
+
+      assert {:ok, %Invoice{} = invoice} =
+               Invoices.pay_invoice(invoice, %{paid_out_of_band: true})
+
+      assert invoice.status == Invoice.statuses().paid
+
+      assert_in_delta DateTime.to_unix(invoice.status_transitions.paid_at),
+                      DateTime.to_unix(utc_now),
+                      5
+
+      assert invoice.auto_advance == false
+
+      assert [] = all_enqueued(worker: AutomaticCollectionWorker, args: %{id: invoice.id})
+    end
+
+    test "when invoice status is not open, returns an error tuple" do
+      invoice = insert!(:invoice, status: Invoice.statuses().draft)
+      assert {:error, :invalid_action} = Invoices.pay_invoice(invoice, %{paid_out_of_band: true})
+    end
+  end
+
+  describe "void_invoice/1" do
+    test "when invoice status is open, voids the invoice" do
+      invoice = insert!(:invoice, auto_advance: true)
+
+      utc_now = utc_now()
+
+      Oban.insert!(AutomaticCollectionWorker.new(%{id: invoice.id}))
+
+      assert {:ok, %Invoice{} = invoice} = Invoices.void_invoice(invoice)
+
+      assert invoice.status == Invoice.statuses().void
+
+      assert_in_delta DateTime.to_unix(invoice.status_transitions.voided_at),
+                      DateTime.to_unix(utc_now),
+                      5
+
+      assert invoice.auto_advance == false
+
+      assert [] = all_enqueued(worker: AutomaticCollectionWorker, args: %{id: invoice.id})
+    end
+
+    test "when invoice status is not open, returns an error tuple" do
+      invoice = insert!(:invoice, status: Invoice.statuses().draft)
+      assert {:error, :invalid_action} = Invoices.void_invoice(invoice)
+    end
+  end
+
+  describe "mark_invoice_uncollectible/1" do
+    test "when invoice status is open, mark the invoice uncollectible" do
+      invoice = insert!(:invoice, auto_advance: true)
+
+      utc_now = utc_now()
+
+      Oban.insert!(AutomaticCollectionWorker.new(%{id: invoice.id}))
+
+      assert {:ok, %Invoice{} = invoice} = Invoices.mark_invoice_uncollectible(invoice)
+
+      assert invoice.status == Invoice.statuses().uncollectible
+
+      assert_in_delta DateTime.to_unix(invoice.status_transitions.marked_uncollectible_at),
+                      DateTime.to_unix(utc_now),
+                      5
+
+      assert invoice.auto_advance == false
+
+      assert [] = all_enqueued(worker: AutomaticCollectionWorker, args: %{id: invoice.id})
+    end
+
+    test "when invoice status is not open, returns an error tuple" do
+      invoice = insert!(:invoice, status: Invoice.statuses().draft)
+      assert {:error, :invalid_action} = Invoices.mark_invoice_uncollectible(invoice)
     end
   end
 end

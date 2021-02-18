@@ -21,8 +21,6 @@ defmodule Tailcall.Accounts.InvoiceSettings do
     |> cast(attrs, [
       :days_until_due,
       :invoice_prefix,
-      :next_invoice_sequence_livemode,
-      :next_invoice_sequence_testmode,
       :numbering_scheme
     ])
     |> validate_inclusion(:numbering_scheme, Map.values(numbering_scheme()))

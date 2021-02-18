@@ -517,17 +517,10 @@ defmodule Tailcall.Billing.SubscriptionsTest do
 
       assert_in_delta DateTime.to_unix(subscription.canceled_at), DateTime.to_unix(utc_now()), 5
 
-      assert [] =
-               all_enqueued(
-                 worker: RenewSubscriptionWorker,
-                 args: %{id: subscription.id}
-               )
+      assert [] = all_enqueued(worker: RenewSubscriptionWorker, args: %{id: subscription.id})
 
       assert [_job] =
-               all_enqueued(
-                 worker: PastDueSubscriptionWorker,
-                 args: %{id: subscription.id}
-               )
+               all_enqueued(worker: PastDueSubscriptionWorker, args: %{id: subscription.id})
     end
   end
 end
