@@ -150,7 +150,7 @@ defmodule Tailcall.Billing.SubscriptionsTest do
   end
 
   describe "create_subscription/1" do
-    test "when price is licensed per_unit, creates a subscription" do
+    test "for prepaid item when price is licensed per_unit, creates a subscription" do
       account = insert!(:account)
       product = insert!(:product, account_id: account.id)
 
@@ -335,7 +335,7 @@ defmodule Tailcall.Billing.SubscriptionsTest do
       assert %{items: ["currency must match across all prices"]} = errors_on(changeset)
     end
 
-    test "when the same price is one multiple items, returns an invalid changeset" do
+    test "when the same price is on multiple items, returns an invalid changeset" do
       account = insert!(:account)
 
       price = insert!(:price, account_id: account.id)

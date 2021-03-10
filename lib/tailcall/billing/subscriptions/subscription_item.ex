@@ -14,6 +14,7 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionItem do
           deleted_at: DateTime.t() | nil,
           id: binary,
           inserted_at: DateTime.t(),
+          is_prepaid: boolean,
           metadata: map,
           object: binary,
           price: Price.t(),
@@ -31,6 +32,7 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionItem do
     belongs_to(:subscription, Subscription, type: Shortcode.Ecto.ID, prefix: "sub")
 
     field(:created_at, :utc_datetime)
+    field(:is_prepaid, :boolean, default: true)
     field(:metadata, :map, default: %{})
     belongs_to(:price, Price, type: Shortcode.Ecto.ID, prefix: "price")
     field(:quantity, :integer)

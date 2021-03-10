@@ -100,20 +100,37 @@ defmodule Tailcall.Billing.Subscriptions do
       |> Subscription.create_changeset(attrs)
       |> prepare_create_changes()
     end)
-    |> Multi.run(:invoice, fn _repo, %{subscription: subscription} ->
-      subscription
-      |> Repo.preload(items: [price: :product])
-      |> build_invoice()
-      |> Invoices.create_invoice()
+    |> Multi.run(:has_prepaid_items?, fn _, %{subscription: subscription} ->
+      {:ok, has_prepaid_items?(subscription)}
+    end)
+    |> Multi.run(:invoice, fn
+      _repo, %{has_prepaid_items?: true, subscription: subscription} ->
+        subscription
+        |> Repo.preload(items: [price: :product])
+        |> build_invoice()
+        |> Invoices.create_invoice()
+
+      _repo, %{has_prepaid_items?: false} ->
+        {:ok, nil}
     end)
     |> Multi.update(
       :subscription_with_status,
-      fn %{
-           invoice: %{status: "draft"},
-           subscription: %{collection_method: "send_invoice"} = subscription
-         } ->
-        subscription
-        |> Subscription.update_changeset(%{status: Subscription.statuses().active})
+      fn
+        %{
+          has_prepaid_items?: true,
+          invoice: %{status: "draft"},
+          subscription: %{collection_method: "send_invoice"} = subscription
+        } ->
+          subscription
+          |> Subscription.update_changeset(%{status: Subscription.statuses().active})
+
+        %{
+          has_prepaid_items?: false,
+          invoice: nil,
+          subscription: %{collection_method: "send_invoice"} = subscription
+        } ->
+          subscription
+          |> Subscription.update_changeset(%{status: Subscription.statuses().active})
       end
     )
     |> Oban.insert(:renew_subscription_job, fn %{subscription_with_status: subscription} ->
@@ -304,6 +321,10 @@ defmodule Tailcall.Billing.Subscriptions do
       {:ok, %{subscription_after_update: %Subscription{} = subscription}} -> {:ok, subscription}
       {:error, _, changeset, _} -> {:error, changeset}
     end
+  end
+
+  defp has_prepaid_items?(%Subscription{items: subscription_items}) do
+    subscription_items |> Enum.any?(& &1.is_prepaid)
   end
 
   defp build_credit_unused_time(_, _, "none" = _proration_behavior), do: nil
