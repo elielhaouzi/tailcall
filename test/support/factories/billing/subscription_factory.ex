@@ -75,8 +75,15 @@ defmodule Tailcall.Factory.Billing.Subscription do
           price_id: price_id,
           quantity: 1
         }
+        |> make_prepaid()
         |> struct!(attrs)
       end
+
+      def make_prepaid(%SubscriptionItem{} = subscription_item),
+        do: %{subscription_item | is_prepaid: true}
+
+      def make_postpaid(%SubscriptionItem{} = subscription_item),
+        do: %{subscription_item | is_prepaid: false}
     end
   end
 end
