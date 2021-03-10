@@ -8,7 +8,7 @@ jobs:
     name: mix format (Elixir ${{ matrix.elixir }} OTP ${{ matrix.otp }})
     strategy:
       matrix:
-        otp: ["23.0.2"]
+        otp: ["21.3.8"]
         elixir: ["1.11.3"]
         node: ["12.16.2"]
 
@@ -55,7 +55,7 @@ jobs:
     name: mix test (Elixir ${{ matrix.elixir }} OTP ${{ matrix.otp }})
     strategy:
       matrix:
-        otp: ["23.0.2"]
+        otp: ["21.3.8"]
         elixir: ["1.11.3"]
 
     services:

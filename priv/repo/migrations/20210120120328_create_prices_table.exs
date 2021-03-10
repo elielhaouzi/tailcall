@@ -11,7 +11,7 @@ defmodule Tailcall.Repo.Migrations.CreatePricesTable do
       add(:created_at, :utc_datetime, null: false)
       add(:currency, :string, null: false)
       add(:livemode, :boolean, null: false)
-      add(:metadata, :map, null: true)
+      add(:metadata, :map, null: false)
       add(:nickname, :string, null: true)
       add(:recurring_aggregate_usage, :string, null: true)
       add(:recurring_interval, :string, null: true)

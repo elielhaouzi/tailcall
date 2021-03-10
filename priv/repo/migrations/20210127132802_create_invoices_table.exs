@@ -6,9 +6,7 @@ defmodule Tailcall.Repo.Migrations.CreateInvoicesTable do
       add(:account_id, :bigint, null: false)
       add(:customer_id, :bigint, null: false)
 
-      add(:subscription_id, references(:subscriptions, type: :bigint, on_delete: :nothing),
-        null: true
-      )
+      add(:subscription_id, references(:subscriptions, on_delete: :nothing), null: true)
 
       add(:account_name, :string, null: true)
       add(:amount_due, :integer, null: false)

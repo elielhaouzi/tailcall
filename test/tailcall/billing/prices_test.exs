@@ -60,7 +60,7 @@ defmodule Tailcall.Billing.PricesTest do
       insert!(:price)
 
       %{data: [price], total: 1} = Prices.list_prices()
-      refute Ecto.assoc_loaded?(price.tiers)
+      assert Ecto.assoc_loaded?(price.tiers)
 
       %{data: [price], total: 1} = Prices.list_prices(includes: [:tiers])
       assert Ecto.assoc_loaded?(price.tiers)

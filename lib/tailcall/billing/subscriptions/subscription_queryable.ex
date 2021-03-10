@@ -4,13 +4,19 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionQueryable do
 
   import Ecto.Query, only: [last: 2, preload: 2, select_merge: 3]
 
+  alias Tailcall.Core.Customers
   alias Tailcall.Billing.Invoices
+  alias Tailcall.Billing.Subscriptions.SubscriptionItemQueryable
 
   @spec with_preloads(Ecto.Queryable.t(), list(atom())) :: Ecto.Queryable.t()
   def with_preloads(queryable, includes) when is_list(includes) do
     Enum.reduce(includes, queryable, fn include, queryable ->
       queryable |> with_preload(include)
     end)
+  end
+
+  defp with_preload(queryable, :customer) do
+    queryable |> preload_customer()
   end
 
   defp with_preload(queryable, :latest_invoice_id) do
@@ -23,6 +29,10 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionQueryable do
 
   defp with_preload(queryable, :items) do
     queryable |> preload_subscription_items()
+  end
+
+  defp with_preload(queryable, items: includes) do
+    queryable |> preload_subscription_items(includes: includes)
   end
 
   @spec with_latest_invoice_id(Ecto.Queryable.t()) :: Ecto.Queryable.t()
@@ -40,13 +50,26 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionQueryable do
     )
   end
 
+  defp preload_customer(queryable) do
+    customer_query = Customers.customer_queryable() |> Ecto.Queryable.to_query()
+
+    queryable |> preload(customer: ^customer_query)
+  end
+
   defp preload_latest_invoice(queryable) do
     latest_invoice_query = Invoices.invoice_queryable() |> last(:id) |> Ecto.Queryable.to_query()
 
     queryable |> preload(latest_invoice: ^latest_invoice_query)
   end
 
-  defp preload_subscription_items(queryable) do
-    queryable |> preload([:items])
+  defp preload_subscription_items(queryable, opts \\ []) do
+    includes = opts |> Keyword.get(:includes, [])
+
+    subscription_item_query =
+      SubscriptionItemQueryable.queryable()
+      |> SubscriptionItemQueryable.with_preloads(includes)
+      |> Ecto.Queryable.to_query()
+
+    queryable |> preload(items: ^subscription_item_query)
   end
 end

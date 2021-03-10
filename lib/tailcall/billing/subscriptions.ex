@@ -3,9 +3,19 @@ defmodule Tailcall.Billing.Subscriptions do
   The subscriptions context.
   """
   import Ecto.Changeset,
-    only: [add_error: 3, get_field: 2, get_field: 3, prepare_changes: 2, put_change: 3]
+    only: [
+      add_error: 3,
+      get_change: 3,
+      get_field: 2,
+      get_field: 3,
+      prepare_changes: 2,
+      put_assoc: 3,
+      put_change: 3
+    ]
 
-  import Ecto.Query, only: [order_by: 2, where: 2, where: 3]
+  import Ecto.Query, only: [lock: 2, order_by: 2, where: 2, where: 3]
+
+  import TailcallWeb.Gettext, only: [gettext: 2]
 
   alias Ecto.Multi
 
@@ -13,8 +23,11 @@ defmodule Tailcall.Billing.Subscriptions do
 
   alias Tailcall.Accounts
   alias Tailcall.Core.Customers
+  alias Tailcall.Core.Customers.Customer
+  alias Tailcall.Billing.Products.Product
   alias Tailcall.Billing.Prices.Price
   alias Tailcall.Billing.Invoices
+  alias Tailcall.Billing.InvoiceItems
   alias Tailcall.Billing.Subscriptions.{Subscription, SubscriptionItem, SubscriptionQueryable}
 
   alias Tailcall.Billing.Subscriptions.Workers.{
@@ -85,8 +98,7 @@ defmodule Tailcall.Billing.Subscriptions do
     |> Multi.insert(:subscription, fn %{} ->
       %Subscription{}
       |> Subscription.create_changeset(attrs)
-      |> validate_create_changes()
-      |> put_periods()
+      |> prepare_create_changes()
     end)
     |> Multi.run(:invoice, fn _repo, %{subscription: subscription} ->
       subscription
@@ -185,6 +197,197 @@ defmodule Tailcall.Billing.Subscriptions do
     end
   end
 
+  @spec update_subscription(Subscription.t(), map) ::
+          {:ok, Subscription.t()} | {:error, Ecto.Changeset.t()}
+  def update_subscription(%Subscription{id: subscription_id}, attrs) do
+    utc_now = DateTime.utc_now()
+
+    proration_behavior = Map.get(attrs, :proration_behavior)
+    proration_date = Map.get(attrs, :proration_date, utc_now)
+
+    Multi.new()
+    |> Multi.run(:subscription_before_update, fn _, %{} ->
+      {:ok,
+       [filters: [id: subscription_id], includes: [:customer, [items: [price: :product]]]]
+       |> subscription_queryable()
+       |> lock("FOR UPDATE")
+       |> Repo.one!()}
+    end)
+    |> Multi.run(
+      :subscription_after_update,
+      fn _, %{subscription_before_update: subscription} ->
+        items =
+          attrs
+          |> Map.get(:items, [])
+          |> Enum.map(fn
+            %{is_deleted: true} = subscription_item -> %{subscription_item | deleted_at: utc_now}
+            subscription_item -> subscription_item
+          end)
+
+        changed_item_ids = items |> Enum.map(& &1.id) |> Enum.reject(&is_nil/1)
+
+        unchanged_items =
+          subscription.items
+          |> Enum.reject(&(&1.id in changed_item_ids))
+          |> Enum.map(&Map.from_struct/1)
+
+        attrs = attrs |> Map.put(:items, unchanged_items ++ items)
+
+        subscription
+        |> Subscription.update_changeset(attrs)
+        |> prepare_update_changes()
+        |> Repo.update()
+      end
+    )
+    |> Multi.run(
+      :prorate_changes,
+      fn _,
+         %{
+           subscription_before_update: subscription_before_update,
+           subscription_after_update: subscription_after_update
+         } ->
+        invoice_items =
+          attrs
+          |> Map.get(:items)
+          |> Enum.flat_map(fn
+            %{id: subscription_item_id, is_deleted: false} ->
+              subscription_item_before_update =
+                subscription_before_update.items |> Enum.find(&(&1.id == subscription_item_id))
+
+              subscription_after_update_item =
+                subscription_after_update.items |> Enum.find(&(&1.id == subscription_item_id))
+
+              [
+                build_credit_unused_time(
+                  %{subscription_item_before_update | subscription: subscription_before_update},
+                  proration_date,
+                  proration_behavior
+                ),
+                build_debit_remaining_time(
+                  %{subscription_after_update_item | subscription: subscription_after_update},
+                  proration_date,
+                  proration_behavior
+                )
+              ]
+
+            %{id: subscription_item_id, is_deleted: true} ->
+              subscription_item =
+                subscription_before_update.items |> Enum.find(&(&1.id == subscription_item_id))
+
+              [
+                build_credit_unused_time(
+                  %{subscription_item | subscription: subscription_before_update},
+                  proration_date,
+                  proration_behavior
+                )
+              ]
+
+            %{price_id: price_id} ->
+              subscription_item =
+                subscription_after_update.items |> Enum.find(&(&1.price_id == price_id))
+
+              [
+                build_debit_remaining_time(
+                  %{subscription_item | subscription: subscription_after_update},
+                  proration_date,
+                  proration_behavior
+                )
+              ]
+          end)
+          |> Enum.reject(&is_nil/1)
+
+        InvoiceItems.create_invoice_items(invoice_items)
+      end
+    )
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{subscription_after_update: %Subscription{} = subscription}} -> {:ok, subscription}
+      {:error, _, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  defp build_credit_unused_time(_, _, "none" = _proration_behavior), do: nil
+
+  defp build_credit_unused_time(
+         %SubscriptionItem{
+           price: %Price{product: %Product{} = product} = price,
+           quantity: quantity,
+           subscription: %Subscription{customer: %Customer{} = customer} = subscription
+         } = subscription_item,
+         %DateTime{} = proration_date,
+         "create_proration"
+       ) do
+    billing_period_in_seconds =
+      DateTime.diff(subscription.current_period_end, subscription.current_period_start)
+
+    amount =
+      subscription.current_period_end
+      |> DateTime.diff(proration_date)
+      |> Kernel.*(100)
+      |> Decimal.div(billing_period_in_seconds)
+      |> Decimal.mult(price.unit_amount * quantity)
+      |> Decimal.div(100)
+      |> Decimal.round()
+      |> Decimal.to_integer()
+
+    description =
+      gettext("Unused time on %{quantity} x %{product_name} after %{date}",
+        quantity: quantity,
+        product_name: product.name,
+        date: DateTime.to_date(proration_date)
+      )
+
+    InvoiceItems.build_invoice_item!(customer, price, subscription, subscription_item, %{
+      amount: -amount,
+      description: description,
+      is_proration: true,
+      period_start: proration_date,
+      period_end: subscription.current_period_end,
+      quantity: quantity
+    })
+  end
+
+  defp build_debit_remaining_time(_, _, "none" = _proration_behavior), do: nil
+
+  defp build_debit_remaining_time(
+         %SubscriptionItem{
+           price: %Price{product: %Product{} = product} = price,
+           quantity: quantity,
+           subscription: %Subscription{customer: %Customer{} = customer} = subscription
+         } = subscription_item,
+         %DateTime{} = proration_date,
+         "create_proration"
+       ) do
+    billing_period_in_seconds =
+      DateTime.diff(subscription.current_period_end, subscription.current_period_start)
+
+    amount =
+      subscription.current_period_end
+      |> DateTime.diff(proration_date)
+      |> Kernel.*(100)
+      |> Decimal.div(billing_period_in_seconds)
+      |> Decimal.mult(price.unit_amount * quantity)
+      |> Decimal.div(100)
+      |> Decimal.round()
+      |> Decimal.to_integer()
+
+    description =
+      gettext("Remaining time on %{quantity} x %{product_name} after %{date}",
+        quantity: quantity,
+        product_name: product.name,
+        date: DateTime.to_date(proration_date)
+      )
+
+    InvoiceItems.build_invoice_item!(customer, price, subscription, subscription_item, %{
+      amount: amount,
+      description: description,
+      is_proration: true,
+      period_start: proration_date,
+      period_end: subscription.current_period_end,
+      quantity: quantity
+    })
+  end
+
   @spec cancel_subscription(Subscription.t(), map) ::
           {:ok, Subscription.t()} | {:error, Ecto.Changeset.t()}
   def cancel_subscription(%Subscription{} = subscription, attrs) do
@@ -230,11 +433,38 @@ defmodule Tailcall.Billing.Subscriptions do
     |> Repo.update!()
   end
 
-  defp validate_create_changes(%Ecto.Changeset{valid?: false} = changeset), do: changeset
+  defp prepare_update_changes(%Ecto.Changeset{valid?: false} = changeset), do: changeset
 
-  defp validate_create_changes(changeset) do
+  defp prepare_update_changes(changeset) do
+    %{
+      currency: expected_currency,
+      recurring_interval: expected_recurring_interval,
+      recurring_interval_count: expected_recurring_interval_count
+    } = changeset.data.items |> hd() |> Map.get(:price)
+
+    item_changesets =
+      changeset
+      |> get_change(:items, [])
+      |> Enum.map(fn changeset ->
+        changeset
+        |> validate_subscription_item_price_currency(expected_currency)
+        |> validate_subscription_item_price_interval_fields(
+          expected_recurring_interval,
+          expected_recurring_interval_count
+        )
+      end)
+
+    changeset
+    |> put_assoc(:items, item_changesets)
+    |> validate_subscription_items_constaints()
+  end
+
+  defp prepare_create_changes(%Ecto.Changeset{valid?: false} = changeset), do: changeset
+
+  defp prepare_create_changes(changeset) do
     changeset
     |> validate_subscription_items_constaints()
+    |> put_periods()
     |> prepare_changes(fn changeset ->
       changeset
       |> assoc_constraint_account()
@@ -268,63 +498,21 @@ defmodule Tailcall.Billing.Subscriptions do
   end
 
   defp validate_subscription_items_constaints(%Ecto.Changeset{} = changeset) do
-    subscription_items = changeset |> get_field(:items, []) |> Enum.map(&Repo.preload(&1, :price))
+    subscription_items = changeset |> get_field(:items, [])
 
     changeset
-    |> validate_belongs_to_same_account(subscription_items)
-    |> validate_belongs_to_the_subscription_account(subscription_items)
-    |> validate_same_recurring_interval_fields(subscription_items)
-    |> validate_same_currency(subscription_items)
+    |> validate_prices_has_same_recurring_interval_fields(subscription_items)
+    |> validate_prices_has_same_currency(subscription_items)
+    |> validate_prices_are_uniq(subscription_items)
   end
 
-  # defp validate_belongs_to_same_account(%Ecto.Changeset{valid?: false} = changeset, _),
+  # defp validate_prices_has_same_recurring_interval_fields(%Ecto.Changeset{valid?: false} = changeset, _),
   #   do: changeset
 
-  defp validate_belongs_to_same_account(%Ecto.Changeset{} = changeset, subscription_items)
-       when is_list(subscription_items) do
-    uniq_prices_account_id =
-      subscription_items
-      |> Enum.map(& &1.price.account_id)
-      |> Enum.uniq()
-
-    if length(uniq_prices_account_id) == 1 do
-      changeset
-    else
-      changeset
-      |> add_error(:items, "account must match across all prices")
-    end
-  end
-
-  defp validate_belongs_to_the_subscription_account(
-         %Ecto.Changeset{valid?: false} = changeset,
-         _
-       ),
-       do: changeset
-
-  defp validate_belongs_to_the_subscription_account(
+  defp validate_prices_has_same_recurring_interval_fields(
          %Ecto.Changeset{} = changeset,
          subscription_items
        )
-       when is_list(subscription_items) do
-    subscription_account_id = get_field(changeset, :account_id)
-
-    [uniq_prices_account_id] =
-      subscription_items
-      |> Enum.map(& &1.price.account_id)
-      |> Enum.uniq()
-
-    if uniq_prices_account_id == subscription_account_id do
-      changeset
-    else
-      changeset
-      |> add_error(:items, "prices must belongs to account #{subscription_account_id}")
-    end
-  end
-
-  defp validate_same_recurring_interval_fields(%Ecto.Changeset{valid?: false} = changeset, _),
-    do: changeset
-
-  defp validate_same_recurring_interval_fields(%Ecto.Changeset{} = changeset, subscription_items)
        when is_list(subscription_items) do
     uniq_intervals =
       subscription_items
@@ -344,9 +532,10 @@ defmodule Tailcall.Billing.Subscriptions do
     end
   end
 
-  defp validate_same_currency(%Ecto.Changeset{valid?: false} = changeset, _), do: changeset
+  defp validate_prices_has_same_currency(%Ecto.Changeset{valid?: false} = changeset, _),
+    do: changeset
 
-  defp validate_same_currency(%Ecto.Changeset{} = changeset, subscription_items)
+  defp validate_prices_has_same_currency(%Ecto.Changeset{} = changeset, subscription_items)
        when is_list(subscription_items) do
     uniq_currencies =
       subscription_items
@@ -361,6 +550,66 @@ defmodule Tailcall.Billing.Subscriptions do
     end
   end
 
+  defp validate_prices_are_uniq(%Ecto.Changeset{valid?: false} = changeset, _), do: changeset
+
+  defp validate_prices_are_uniq(%Ecto.Changeset{} = changeset, subscription_items)
+       when is_list(subscription_items) do
+    price_ids = subscription_items |> Enum.map(& &1.price.id)
+
+    if Enum.uniq(price_ids) == price_ids do
+      changeset
+    else
+      changeset
+      |> add_error(:items, "cannot add multiple subscription items with the same price")
+    end
+  end
+
+  defp validate_subscription_item_price_currency(%Ecto.Changeset{valid?: false} = changeset, _),
+    do: changeset
+
+  defp validate_subscription_item_price_currency(%Ecto.Changeset{} = changeset, expected_currency)
+       when is_binary(expected_currency) do
+    %{currency: currency} = get_field(changeset, :price)
+
+    if currency == expected_currency do
+      changeset
+    else
+      changeset
+      |> add_error(:currency, "price must match the expected currency of `#{expected_currency}`")
+    end
+  end
+
+  defp validate_subscription_item_price_interval_fields(
+         %Ecto.Changeset{valid?: false} = changeset,
+         _,
+         _
+       ),
+       do: changeset
+
+  defp validate_subscription_item_price_interval_fields(
+         %Ecto.Changeset{} = changeset,
+         expected_recurring_interval,
+         expected_recurring_interval_count
+       )
+       when is_binary(expected_recurring_interval) and
+              is_integer(expected_recurring_interval_count) do
+    %{recurring_interval: recurring_interval, recurring_interval_count: recurring_interval_count} =
+      get_field(changeset, :price)
+
+    if recurring_interval == expected_recurring_interval and
+         recurring_interval_count == expected_recurring_interval_count do
+      changeset
+    else
+      changeset
+      |> add_error(
+        :currency,
+        "price must match the recurring_interval `#{recurring_interval}` and the recurring_interval_count `#{
+          recurring_interval_count
+        }`"
+      )
+    end
+  end
+
   defp put_periods(%Ecto.Changeset{valid?: false} = changeset), do: changeset
 
   defp put_periods(%Ecto.Changeset{} = changeset) do
@@ -369,11 +618,7 @@ defmodule Tailcall.Billing.Subscriptions do
     current_period_end = get_field(changeset, :current_period_end)
 
     %{recurring_interval: recurring_interval, recurring_interval_count: recurring_interval_count} =
-      changeset
-      |> get_field(:items)
-      |> List.first()
-      |> Repo.preload(:price)
-      |> Map.get(:price)
+      changeset |> get_field(:items) |> hd() |> Map.get(:price)
 
     %{
       last: {last_period_end, last_period_start},
@@ -427,9 +672,13 @@ defmodule Tailcall.Billing.Subscriptions do
     }
   end
 
-  defp shift(%DateTime{} = from, interval, interval_count)
+  defp shift(%DateTime{} = datetime, "week", interval_count) when is_integer(interval_count) do
+    shift(datetime, "day", 7 * interval_count)
+  end
+
+  defp shift(%DateTime{} = datetime, interval, interval_count)
        when interval in ["day", "month"] and is_integer(interval_count) do
-    Timex.shift(from, [{String.to_atom("#{interval}s"), interval_count}])
+    Timex.shift(datetime, [{String.to_atom("#{interval}s"), interval_count}])
   end
 
   defp build_invoice(%Subscription{items: subscription_items, status: status} = subscription) do
@@ -488,7 +737,15 @@ defmodule Tailcall.Billing.Subscriptions do
   @spec subscription_queryable(keyword) :: Ecto.Queryable.t()
   def subscription_queryable(opts \\ []) when is_list(opts) do
     filters = Keyword.get(opts, :filters, [])
-    includes = Keyword.get(opts, :includes, []) |> Enum.concat([:items]) |> Enum.uniq()
+
+    includes =
+      opts
+      |> Keyword.get(:includes, [])
+      |> Enum.concat([:items])
+      |> Enum.uniq_by(fn
+        include when is_atom(include) -> include
+        [{parent_include, _} | _] -> parent_include
+      end)
 
     SubscriptionQueryable.queryable()
     |> SubscriptionQueryable.filter(filters)

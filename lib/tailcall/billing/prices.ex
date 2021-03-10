@@ -41,16 +41,24 @@ defmodule Tailcall.Billing.Prices do
     |> Repo.insert()
   end
 
-  @spec get_price(binary) :: Price.t() | nil
-  def get_price(id) when is_binary(id) do
-    Price
-    |> Repo.get(id)
+  @spec get_price(binary, keyword) :: Price.t() | nil
+  def get_price(id, opts \\ []) when is_binary(id) do
+    filters = opts |> Keyword.get(:filters, []) |> Keyword.put(:id, id)
+
+    opts
+    |> Keyword.put(:filters, filters)
+    |> price_queryable()
+    |> Repo.one()
   end
 
-  @spec get_price!(binary) :: Price.t() | nil
-  def get_price!(id) when is_binary(id) do
-    Price
-    |> Repo.get!(id)
+  @spec get_price!(binary, keyword) :: Price.t() | nil
+  def get_price!(id, opts \\ []) when is_binary(id) do
+    filters = opts |> Keyword.get(:filters, []) |> Keyword.put(:id, id)
+
+    opts
+    |> Keyword.put(:filters, filters)
+    |> price_queryable()
+    |> Repo.one!()
   end
 
   @spec update_price(Price.t(), map()) ::
@@ -90,9 +98,10 @@ defmodule Tailcall.Billing.Prices do
     end
   end
 
-  defp price_queryable(opts) do
+  @spec price_queryable(keyword) :: Ecto.Queryable.t()
+  def price_queryable(opts \\ []) do
     filters = Keyword.get(opts, :filters, [])
-    includes = Keyword.get(opts, :includes, [])
+    includes = Keyword.get(opts, :includes, []) |> Enum.concat([:tiers]) |> Enum.uniq()
 
     PriceQueryable.queryable()
     |> PriceQueryable.filter(filters)

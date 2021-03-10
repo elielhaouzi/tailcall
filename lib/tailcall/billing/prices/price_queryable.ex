@@ -15,6 +15,10 @@ defmodule Tailcall.Billing.Prices.PriceQueryable do
     queryable |> preload([:tiers])
   end
 
+  defp with_preload(queryable, :product) do
+    queryable |> preload([:product])
+  end
+
   defp filter_by_field({:deleted_at, %DateTime{} = datetime}, queryable) do
     queryable
     |> AntlUtilsEcto.Query.where_period_status(:ended, :created_at, :deleted_at, datetime)

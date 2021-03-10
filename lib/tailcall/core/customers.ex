@@ -59,7 +59,7 @@ defmodule Tailcall.Core.Customers do
     |> Repo.one!()
   end
 
-  @spec customer_exists?(binary) :: boolean
+  @spec customer_exists?(binary, keyword) :: boolean
   def customer_exists?(id, opts \\ []) when is_binary(id) do
     filters = opts |> Keyword.get(:filters, []) |> Keyword.put(:id, id)
 
@@ -104,7 +104,8 @@ defmodule Tailcall.Core.Customers do
     end
   end
 
-  defp customer_queryable(opts) do
+  @spec customer_queryable(keyword) :: Ecto.Queryable.t()
+  def customer_queryable(opts \\ []) do
     filters = Keyword.get(opts, :filters, [])
 
     CustomerQueryable.queryable()

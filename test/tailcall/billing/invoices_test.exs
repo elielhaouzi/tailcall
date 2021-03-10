@@ -179,7 +179,7 @@ defmodule Tailcall.Billing.InvoincesTest do
 
       assert invoice_line_item.amount == price.unit_amount * subscription_item.quantity
       assert invoice_line_item.currency == price.currency
-      assert invoice_line_item.period_end == subscription.current_period_start
+      assert invoice_line_item.period_end == subscription.current_period_end
       assert invoice_line_item.period_start == subscription.current_period_start
       assert invoice_line_item.quantity == subscription_item.quantity
       assert invoice_line_item.type == Invoices.InvoiceLineItem.types().subscription

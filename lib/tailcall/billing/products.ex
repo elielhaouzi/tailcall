@@ -89,7 +89,8 @@ defmodule Tailcall.Billing.Products do
     end
   end
 
-  defp product_queryable(opts) do
+  @spec product_queryable(keyword) :: Ecto.Queryable.t()
+  def product_queryable(opts \\ []) do
     filters = Keyword.get(opts, :filters, [])
 
     ProductQueryable.queryable()

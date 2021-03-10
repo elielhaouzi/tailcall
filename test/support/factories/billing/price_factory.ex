@@ -9,7 +9,15 @@ defmodule Tailcall.Factory.Billing.Price do
         account_id = account_id || Map.get(insert!(:account), :id)
 
         {product_id, attrs} = Keyword.pop(attrs, :product_id)
-        product_id = product_id || Map.get(insert!(:product, account_id: account_id), :id)
+
+        attrs =
+          if product_id do
+            attrs |> Keyword.put(:product_id, product_id)
+          else
+            product = insert!(:product, account_id: account_id)
+
+            attrs |> Keyword.put(:product_id, product.id) |> Keyword.put(:product, product)
+          end
 
         %Price{
           account_id: account_id,

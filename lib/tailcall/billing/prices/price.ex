@@ -37,7 +37,7 @@ defmodule Tailcall.Billing.Prices.Price do
           id: binary,
           inserted_at: DateTime.t(),
           livemode: boolean,
-          metadata: map | nil,
+          metadata: map,
           nickname: binary,
           object: binary,
           product: Product.t(),

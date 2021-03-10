@@ -10,7 +10,7 @@ defmodule Tailcall.Repo.Migrations.CreateCustomerTaxIdsTableTable do
       add(:ended_at, :utc_datetime, null: true)
 
       add(:user_id, :bigint, null: false)
-      add(:customer_id, references(:customers, type: :bigint, on_delete: :nothing), null: false)
+      add(:customer_id, references(:customers, on_delete: :nothing), null: false)
 
       add(:country, :string, null: true)
       add(:type, :string, null: false)

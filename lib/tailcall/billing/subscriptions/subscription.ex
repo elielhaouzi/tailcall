@@ -71,7 +71,11 @@ defmodule Tailcall.Billing.Subscriptions.Subscription do
   def collection_methods,
     do: %{charge_automatically: "charge_automatically", send_invoice: "send_invoice"}
 
+  @spec cancellation_reasons :: %{requested_by_customer: binary}
   def cancellation_reasons, do: %{requested_by_customer: "requested_by_customer"}
+
+  @spec proration_behaviors :: %{create_proration: binary, none: binary}
+  def proration_behaviors, do: %{create_proration: "create_proration", none: "none"}
 
   @spec statuses :: %{
           active: binary(),
@@ -97,8 +101,8 @@ defmodule Tailcall.Billing.Subscriptions.Subscription do
   def create_changeset(%__MODULE__{} = subscription, attrs) when is_map(attrs) do
     attrs =
       attrs
+      |> AntlUtilsElixir.Map.populate_child(:account_id, :items)
       |> AntlUtilsElixir.Map.populate_child(:created_at, :items)
-      |> AntlUtilsElixir.Map.populate_child(:started_at, :items)
 
     # attrs =
     #   attrs
@@ -124,18 +128,22 @@ defmodule Tailcall.Billing.Subscriptions.Subscription do
       :started_at
     ])
     |> cast_assoc(:items, required: true, with: &SubscriptionItem.nested_create_changeset/2)
-
-    # |> validate_subscription_items_constaints()
   end
 
   @spec update_changeset(Subscription.t(), map()) :: Ecto.Changeset.t()
   def update_changeset(%__MODULE__{} = subscription, attrs) when is_map(attrs) do
+    attrs =
+      attrs
+      |> Map.put(:account_id, subscription.account_id)
+      |> AntlUtilsElixir.Map.populate_child(:account_id, :items)
+
     subscription
     |> cast(attrs, [:current_period_end, :current_period_start, :status])
     |> AntlUtilsEcto.Changeset.validate_datetime_gte(
       :current_period_end,
       :current_period_start
     )
+    |> cast_assoc(:items, with: &SubscriptionItem.nested_update_changeset/2)
     |> validate_inclusion(:status, Map.values(statuses()))
   end
 
