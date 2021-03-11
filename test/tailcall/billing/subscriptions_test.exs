@@ -10,7 +10,7 @@ defmodule Tailcall.Billing.SubscriptionsTest do
 
   alias Tailcall.Billing.Subscriptions
   alias Tailcall.Billing.Subscriptions.Subscription
-  alias Tailcall.Billing.Subscriptions.Workers.RenewSubscriptionWorker
+  alias Tailcall.Billing.Subscriptions.Workers.SubscriptionCycleWorker
   alias Tailcall.Billing.Subscriptions.Workers.PastDueSubscriptionWorker
 
   @moduletag :subscriptions
@@ -150,21 +150,20 @@ defmodule Tailcall.Billing.SubscriptionsTest do
   end
 
   describe "create_subscription/1" do
-    test "for prepaid item when price is licensed per_unit, creates a subscription" do
+    test "with prepaid items with licensed per_unit prices, 1.creates a subscription 2.create an invoice 3.enqueue subscription to subscription cycle worker 4.enqueue job for past due subscription" do
       account = insert!(:account)
-      product = insert!(:product, account_id: account.id)
+      livemode = false
 
       price =
-        build(:price, account_id: account.id, product_id: product.id)
-        |> make_type_recurring(%{
-          recurring_interval: Price.recurring_intervals().day,
-          recurring_interval_count: 1
-        })
+        build(:price, account_id: account.id, livemode: livemode)
+        |> make_type_recurring()
+        |> make_recurring_interval_per_day()
         |> make_recurring_usage_type_licensed()
         |> make_billing_scheme_per_unit()
         |> insert!()
 
       customer = insert!(:customer, account_id: account.id)
+
       start_at = utc_now()
 
       assert {:ok, %Subscription{items: [subscription_item]} = subscription} =
@@ -172,7 +171,7 @@ defmodule Tailcall.Billing.SubscriptionsTest do
                  account_id: account.id,
                  customer_id: customer.id,
                  collection_method: Subscription.collection_methods().send_invoice,
-                 livemode: price.livemode,
+                 livemode: livemode,
                  items: [%{price_id: price.id, quantity: 2}],
                  started_at: start_at
                })
@@ -180,12 +179,9 @@ defmodule Tailcall.Billing.SubscriptionsTest do
       assert subscription.account_id == account.id
       assert subscription.customer_id == customer.id
       assert subscription.current_period_start == start_at
-
-      assert subscription.current_period_end ==
-               DateTime.add(subscription.current_period_start, 24 * 3600)
-
+      assert subscription.current_period_end == DateTime.add(start_at, 24 * 3600)
       assert subscription.collection_method == Subscription.collection_methods().send_invoice
-      assert subscription.livemode == price.livemode
+      assert subscription.livemode == livemode
       assert subscription.status == Subscription.statuses().active
 
       assert subscription.latest_invoice_id == subscription.latest_invoice.id
@@ -199,10 +195,124 @@ defmodule Tailcall.Billing.SubscriptionsTest do
       assert subscription.latest_invoice.period_end == start_at
       assert subscription.latest_invoice.period_start == start_at
       assert subscription.latest_invoice.status == Invoice.statuses().draft
-      assert subscription.latest_invoice.total == price.unit_amount * subscription_item.quantity
+      assert [invoice_line_item] = subscription.latest_invoice.line_items
+      assert invoice_line_item.period_start == subscription.current_period_start
+      assert invoice_line_item.period_end == subscription.current_period_end
+      assert invoice_line_item.subscription_item_id == subscription_item.id
+      assert subscription_item.is_prepaid == true
 
       assert_enqueued(
-        worker: RenewSubscriptionWorker,
+        worker: SubscriptionCycleWorker,
+        args: %{id: subscription.id},
+        scheduled_at: subscription.next_period_start
+      )
+
+      assert_enqueued(
+        worker: PastDueSubscriptionWorker,
+        args: %{subscription_id: subscription.id, invoice_id: subscription.latest_invoice.id},
+        scheduled_at: subscription.latest_invoice.due_date
+      )
+    end
+
+    test "with postpaid items with licensed per_unit prices, 1.creates a subscription 2.create an invoice 3.enqueue job for renew" do
+      account = insert!(:account)
+      livemode = false
+
+      price =
+        build(:price, account_id: account.id, livemode: livemode)
+        |> make_type_recurring()
+        |> make_recurring_interval_per_day()
+        |> make_recurring_usage_type_licensed()
+        |> make_billing_scheme_per_unit()
+        |> insert!()
+
+      customer = insert!(:customer, account_id: account.id)
+
+      start_at = utc_now()
+
+      assert {:ok, %Subscription{items: [subscription_item]} = subscription} =
+               Subscriptions.create_subscription(%{
+                 account_id: account.id,
+                 customer_id: customer.id,
+                 collection_method: Subscription.collection_methods().send_invoice,
+                 livemode: livemode,
+                 items: [%{price_id: price.id, quantity: 2, is_prepaid: false}],
+                 started_at: start_at
+               })
+
+      assert subscription.current_period_start == start_at
+      assert subscription.current_period_end == DateTime.add(start_at, 24 * 3600)
+      assert subscription.status == Subscription.statuses().active
+      assert subscription.latest_invoice_id == nil
+      assert subscription_item.is_prepaid == false
+
+      assert_enqueued(
+        worker: SubscriptionCycleWorker,
+        args: %{id: subscription.id},
+        scheduled_at: subscription.next_period_start
+      )
+
+      refute_enqueued(worker: PastDueSubscriptionWorker)
+    end
+
+    test "with prepaid and postpaid items with licensed per_unit prices, 1.creates a subscription 2.create an invoice 3.enqueue subscription to subscription cycle worker 4.enqueue job for past due subscription" do
+      account = insert!(:account)
+      livemode = false
+
+      price_1 =
+        build(:price, account_id: account.id, livemode: livemode)
+        |> make_type_recurring()
+        |> make_recurring_interval_per_day()
+        |> make_recurring_usage_type_licensed()
+        |> make_billing_scheme_per_unit()
+        |> insert!()
+
+      price_2 =
+        build(:price, account_id: account.id, livemode: livemode)
+        |> make_type_recurring()
+        |> make_recurring_interval_per_day()
+        |> make_recurring_usage_type_licensed()
+        |> make_billing_scheme_per_unit()
+        |> insert!()
+
+      customer = insert!(:customer, account_id: account.id)
+
+      start_at = utc_now()
+
+      assert {:ok, %Subscription{items: subscription_items} = subscription} =
+               Subscriptions.create_subscription(%{
+                 account_id: account.id,
+                 customer_id: customer.id,
+                 collection_method: Subscription.collection_methods().send_invoice,
+                 livemode: livemode,
+                 items: [
+                   %{price_id: price_1.id, quantity: 2, is_prepaid: true},
+                   %{price_id: price_2.id, quantity: 2, is_prepaid: false}
+                 ],
+                 started_at: start_at
+               })
+
+      subscription_item_prepaid = subscription_items |> Enum.find(& &1.is_prepaid)
+      _subscription_item_postpaid = subscription_items |> Enum.find(&(!&1.is_prepaid))
+
+      assert subscription.current_period_start == start_at
+      assert subscription.current_period_end == DateTime.add(start_at, 24 * 3600)
+      assert subscription.status == Subscription.statuses().active
+      assert subscription.latest_invoice_id == subscription.latest_invoice.id
+
+      assert subscription.latest_invoice.billing_reason ==
+               Invoice.billing_reasons().subscription_create
+
+      assert subscription.latest_invoice.period_end == start_at
+      assert subscription.latest_invoice.period_start == start_at
+      assert subscription.latest_invoice.status == Invoice.statuses().draft
+      assert [invoice_line_item] = subscription.latest_invoice.line_items
+      assert invoice_line_item.period_start == subscription.current_period_start
+      assert invoice_line_item.period_end == subscription.current_period_end
+      assert invoice_line_item.subscription_item_id == subscription_item_prepaid.id
+
+      assert_enqueued(
+        worker: SubscriptionCycleWorker,
         args: %{id: subscription.id},
         scheduled_at: subscription.next_period_start
       )
@@ -216,7 +326,7 @@ defmodule Tailcall.Billing.SubscriptionsTest do
 
     test "when the create_subscription failed, does not enqueue a job" do
       assert {:error, _changeset} = Subscriptions.create_subscription(%{})
-      refute_enqueued(worker: Tailcall.Billing.Subscriptions.Workers.RenewSubscriptionWorker)
+      refute_enqueued(worker: Tailcall.Billing.Subscriptions.Workers.SubscriptionCycleWorker)
       refute_enqueued(worker: Tailcall.Billing.Subscriptions.Workers.PastDueSubscriptionWorker)
     end
 
@@ -356,24 +466,40 @@ defmodule Tailcall.Billing.SubscriptionsTest do
       assert %{items: ["cannot add multiple subscription items with the same price"]} ==
                errors_on(changeset)
     end
+
+    test "when price of the items are not with the same livemode than the subscription, returns an invalid changeset" do
+      account = insert!(:account)
+
+      price = insert!(:price, account_id: account.id, livemode: true)
+
+      subscription_params =
+        params_for(:subscription,
+          account_id: account.id,
+          livemode: false,
+          items: [build(:subscription_item, price_id: price.id)]
+        )
+
+      assert {:error, changeset} = Subscriptions.create_subscription(subscription_params)
+
+      refute changeset.valid?
+      assert %{items: [%{price_id: ["does not exist"]}]} = errors_on(changeset)
+    end
   end
 
   describe "renew_subscription/1" do
-    test "when price is licensed per_unit and subscription is active, renew the subscription" do
+    test "for prepaid item with licensed per_unit price and subscription is active, renew the subscription for the next period" do
       account = insert!(:account)
-      product = insert!(:product, account_id: account.id)
 
       price =
-        build(:price, account_id: account.id, product_id: product.id)
-        |> make_type_recurring(%{
-          recurring_interval: Price.recurring_intervals().day,
-          recurring_interval_count: 1
-        })
+        build(:price, account_id: account.id)
+        |> make_type_recurring()
+        |> make_recurring_interval_per_day()
         |> make_recurring_usage_type_licensed()
         |> make_billing_scheme_per_unit()
         |> insert!()
 
       customer = insert!(:customer, account_id: account.id)
+
       utc_now = utc_now()
       start_at = utc_now |> add(-24 * 3600)
       end_at = utc_now
@@ -408,23 +534,168 @@ defmodule Tailcall.Billing.SubscriptionsTest do
                Invoice.billing_reasons().subscription_cycle
 
       assert subscription.latest_invoice.status == Invoice.statuses().draft
-      assert subscription.latest_invoice.period_end == subscription_factory.current_period_end
-      assert subscription.latest_invoice.period_start == subscription_factory.current_period_start
+      assert subscription.latest_invoice.period_start == subscription.last_period_start
+      assert subscription.latest_invoice.period_end == subscription.last_period_end
       assert %{line_items: [invoice_line_item]} = subscription.latest_invoice
       assert invoice_line_item.period_end == subscription.current_period_end
       assert invoice_line_item.period_start == subscription.current_period_start
 
       assert_enqueued(
-        worker: RenewSubscriptionWorker,
+        worker: SubscriptionCycleWorker,
         args: %{id: subscription.id},
         scheduled_at: subscription.next_period_start
       )
+
+      assert_enqueued(
+        worker: PastDueSubscriptionWorker,
+        args: %{subscription_id: subscription.id, invoice_id: subscription.latest_invoice.id},
+        scheduled_at: subscription.latest_invoice.due_date
+      )
     end
 
-    test "RenewSubscriptionWorker renew the subscription" do
-      subscription = insert!(:subscription, status: Subscription.statuses().active)
+    test "for postpaid item with licensed per_unit price and subscription is active, renew the subscription for the next period" do
+      account = insert!(:account)
 
-      assert {:ok, _} = perform_job(RenewSubscriptionWorker, %{"id" => subscription.id})
+      price =
+        build(:price, account_id: account.id)
+        |> make_type_recurring(%{
+          recurring_interval: Price.recurring_intervals().day,
+          recurring_interval_count: 1
+        })
+        |> make_recurring_usage_type_licensed()
+        |> make_billing_scheme_per_unit()
+        |> insert!()
+
+      customer = insert!(:customer, account_id: account.id)
+      utc_now = utc_now()
+      start_at = utc_now |> add(-24 * 3600)
+      end_at = utc_now
+
+      subscription_factory =
+        insert!(:subscription,
+          account_id: account.id,
+          customer_id: customer.id,
+          current_period_end: end_at,
+          current_period_start: start_at,
+          collection_method: Subscription.collection_methods().send_invoice,
+          items: [
+            build(:subscription_item,
+              is_prepaid: false,
+              price_id: price.id,
+              quantity: 1,
+              created_at: start_at
+            )
+          ],
+          started_at: start_at,
+          status: Subscription.statuses().active
+        )
+
+      assert {:ok, %Subscription{} = subscription} =
+               Subscriptions.renew_subscription(subscription_factory)
+
+      assert subscription.current_period_start == end_at
+
+      assert subscription.current_period_end ==
+               DateTime.add(subscription.current_period_start, 24 * 3600)
+
+      assert subscription.status == Subscription.statuses().active
+
+      assert subscription.latest_invoice_id == subscription.latest_invoice.id
+
+      assert subscription.latest_invoice.billing_reason ==
+               Invoice.billing_reasons().subscription_cycle
+
+      assert_in_delta DateTime.to_unix(subscription.latest_invoice.created_at),
+                      DateTime.to_unix(utc_now),
+                      5
+
+      assert subscription.latest_invoice.status == Invoice.statuses().draft
+      assert subscription.latest_invoice.period_end == subscription.last_period_end
+      assert subscription.latest_invoice.period_start == subscription.last_period_start
+      assert %{line_items: [invoice_line_item]} = subscription.latest_invoice
+      assert invoice_line_item.period_end == subscription.last_period_end
+      assert invoice_line_item.period_start == subscription.last_period_start
+    end
+
+    test "for prepaid and postpaid items with licensed per_unit price, renew the subscription for the next period" do
+      account = insert!(:account)
+
+      price_1 =
+        build(:price, account_id: account.id)
+        |> make_type_recurring()
+        |> make_recurring_interval_per_day()
+        |> make_recurring_usage_type_licensed()
+        |> make_billing_scheme_per_unit()
+        |> insert!()
+
+      price_2 =
+        build(:price, account_id: account.id)
+        |> make_type_recurring()
+        |> make_recurring_interval_per_day()
+        |> make_recurring_usage_type_licensed()
+        |> make_billing_scheme_per_unit()
+        |> insert!()
+
+      customer = insert!(:customer, account_id: account.id)
+
+      utc_now = utc_now()
+      start_at = utc_now |> add(-24 * 3600)
+      end_at = utc_now
+
+      subscription_factory =
+        insert!(:subscription,
+          account_id: account.id,
+          customer_id: customer.id,
+          current_period_end: end_at,
+          current_period_start: start_at,
+          collection_method: Subscription.collection_methods().send_invoice,
+          items: [
+            build(:subscription_item,
+              is_prepaid: true,
+              price_id: price_1.id,
+              quantity: 1,
+              created_at: start_at
+            ),
+            build(:subscription_item,
+              is_prepaid: false,
+              price_id: price_2.id,
+              quantity: 1,
+              created_at: start_at
+            )
+          ],
+          started_at: start_at,
+          status: Subscription.statuses().active
+        )
+
+      assert {:ok, %Subscription{items: subscription_items} = subscription} =
+               Subscriptions.renew_subscription(subscription_factory)
+
+      subscription_item_prepaid = subscription_items |> Enum.find(& &1.is_prepaid)
+      subscription_item_postpaid = subscription_items |> Enum.find(&(!&1.is_prepaid))
+
+      assert subscription.latest_invoice.period_start == subscription.last_period_start
+      assert subscription.latest_invoice.period_end == subscription.last_period_end
+      assert %{line_items: invoice_line_items} = subscription.latest_invoice
+      invoice_line_item_prepaid = invoice_line_items |> Enum.find(&(&1.price_id == price_1.id))
+      invoice_line_item_postpaid = invoice_line_items |> Enum.find(&(&1.price_id == price_2.id))
+
+      assert invoice_line_item_prepaid.subscription_item_id == subscription_item_prepaid.id
+      assert invoice_line_item_prepaid.period_end == subscription.current_period_end
+      assert invoice_line_item_prepaid.period_start == subscription.current_period_start
+
+      assert invoice_line_item_postpaid.subscription_item_id == subscription_item_postpaid.id
+      assert invoice_line_item_postpaid.period_end == subscription.last_period_end
+      assert invoice_line_item_postpaid.period_start == subscription.last_period_start
+    end
+
+    test "SubscriptionCycleWorker renew the subscription" do
+      subscription =
+        insert!(:subscription,
+          status: Subscription.statuses().active,
+          collection_method: Subscription.collection_methods().send_invoice
+        )
+
+      assert {:ok, _} = perform_job(SubscriptionCycleWorker, %{"id" => subscription.id})
 
       subscription_cycle_status = Invoice.billing_reasons().subscription_cycle
 
@@ -470,7 +741,7 @@ defmodule Tailcall.Billing.SubscriptionsTest do
         )
 
       Oban.insert!(
-        RenewSubscriptionWorker.new(%{id: subscription_factory.id}, scheduled_at: end_at)
+        SubscriptionCycleWorker.new(%{id: subscription_factory.id}, scheduled_at: end_at)
       )
 
       Oban.insert!(
@@ -491,7 +762,7 @@ defmodule Tailcall.Billing.SubscriptionsTest do
 
       assert_in_delta DateTime.to_unix(subscription.canceled_at), DateTime.to_unix(utc_now()), 5
 
-      assert [] = all_enqueued(worker: RenewSubscriptionWorker, args: %{id: subscription.id})
+      assert [] = all_enqueued(worker: SubscriptionCycleWorker, args: %{id: subscription.id})
 
       assert [_job] =
                all_enqueued(worker: PastDueSubscriptionWorker, args: %{id: subscription.id})
@@ -553,9 +824,13 @@ defmodule Tailcall.Billing.SubscriptionsTest do
       assert credit_invoice_item.amount == -credit_unused_time
       assert credit_invoice_item.is_proration
       assert credit_invoice_item.subscription_item_id == subscription_item.id
+      assert credit_invoice_item.period_start == proration_date
+      assert credit_invoice_item.period_end == subscription.current_period_end
       assert cost_invoice_item.amount == cost_time_spent
       assert cost_invoice_item.is_proration
       assert cost_invoice_item.subscription_item_id == subscription_item.id
+      assert cost_invoice_item.period_start == proration_date
+      assert cost_invoice_item.period_end == subscription.current_period_end
     end
 
     test "when the price (with same interval fields) is updated, updates the subscription with invoice_items creation for prorata and returns the subscription" do

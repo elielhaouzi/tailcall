@@ -47,9 +47,10 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionItemTest do
       changeset = SubscriptionItem.nested_create_changeset(%SubscriptionItem{}, %{})
 
       refute changeset.valid?
-      assert length(changeset.errors) == 3
+      assert length(changeset.errors) == 4
       assert %{account_id: ["can't be blank"]} = errors_on(changeset)
       assert %{created_at: ["can't be blank"]} = errors_on(changeset)
+      assert %{livemode: ["can't be blank"]} = errors_on(changeset)
       assert %{price_id: ["can't be blank"]} = errors_on(changeset)
     end
 

@@ -137,9 +137,6 @@ defmodule Tailcall.Billing.Invoices.Invoice do
       :customer_id,
       :subscription_id,
       :account_name,
-      :amount_due,
-      :amount_paid,
-      :amount_remaining,
       :auto_advance,
       :billing_reason,
       :collection_method,
@@ -152,15 +149,11 @@ defmodule Tailcall.Billing.Invoices.Invoice do
       :livemode,
       :period_end,
       :period_start,
-      :status,
-      :total
+      :status
     ])
     |> validate_required([
       :account_id,
       :customer_id,
-      :amount_due,
-      :amount_paid,
-      :amount_remaining,
       :billing_reason,
       :collection_method,
       :created_at,
@@ -168,8 +161,7 @@ defmodule Tailcall.Billing.Invoices.Invoice do
       :livemode,
       :period_end,
       :period_start,
-      :status,
-      :total
+      :status
     ])
     |> AntlUtilsEcto.Changeset.validate_datetime_gte(:period_end, :period_start)
     |> validate_inclusion(:billing_reason, Map.values(billing_reasons()))

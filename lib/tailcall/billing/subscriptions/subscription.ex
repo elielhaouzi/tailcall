@@ -103,6 +103,7 @@ defmodule Tailcall.Billing.Subscriptions.Subscription do
       attrs
       |> AntlUtilsElixir.Map.populate_child(:account_id, :items)
       |> AntlUtilsElixir.Map.populate_child(:created_at, :items)
+      |> AntlUtilsElixir.Map.populate_child(:livemode, :items)
 
     # attrs =
     #   attrs
@@ -135,7 +136,9 @@ defmodule Tailcall.Billing.Subscriptions.Subscription do
     attrs =
       attrs
       |> Map.put(:account_id, subscription.account_id)
+      |> Map.put(:livemode, subscription.livemode)
       |> AntlUtilsElixir.Map.populate_child(:account_id, :items)
+      |> AntlUtilsElixir.Map.populate_child(:livemode, :items)
 
     subscription
     |> cast(attrs, [:current_period_end, :current_period_start, :status])

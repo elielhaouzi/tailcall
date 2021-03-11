@@ -31,7 +31,7 @@ defmodule Tailcall.Billing.Subscriptions do
   alias Tailcall.Billing.Subscriptions.{Subscription, SubscriptionItem, SubscriptionQueryable}
 
   alias Tailcall.Billing.Subscriptions.Workers.{
-    RenewSubscriptionWorker,
+    SubscriptionCycleWorker,
     PastDueSubscriptionWorker
   }
 
@@ -135,14 +135,22 @@ defmodule Tailcall.Billing.Subscriptions do
     )
     |> Oban.insert(:renew_subscription_job, fn %{subscription_with_status: subscription} ->
       %{id: subscription.id}
-      |> RenewSubscriptionWorker.new(scheduled_at: subscription.next_period_start)
+      |> SubscriptionCycleWorker.new(scheduled_at: subscription.next_period_start)
     end)
-    |> Oban.insert(:past_due, fn %{subscription_with_status: subscription, invoice: invoice} ->
-      %{subscription_id: subscription.id, invoice_id: invoice.id}
-      |> PastDueSubscriptionWorker.new(scheduled_at: invoice.due_date)
+    |> Multi.run(:past_due, fn
+      _, %{subscription_with_status: subscription, has_prepaid_items?: true, invoice: invoice} ->
+        %{subscription_id: subscription.id, invoice_id: invoice.id}
+        |> PastDueSubscriptionWorker.new(scheduled_at: invoice.due_date)
+        |> Oban.insert()
+
+      _, %{has_prepaid_items?: false} ->
+        {:ok, nil}
     end)
     |> Repo.transaction()
     |> case do
+      {:ok, %{subscription_with_status: %Subscription{} = subscription, invoice: nil}} ->
+        {:ok, subscription}
+
       {:ok, %{subscription_with_status: %Subscription{} = subscription, invoice: invoice}} ->
         {
           :ok,
@@ -189,17 +197,27 @@ defmodule Tailcall.Billing.Subscriptions do
       |> build_invoice()
       |> Invoices.create_invoice()
     end)
+    |> Multi.run(:subscription_before_update, fn _, %{} ->
+      {:ok, subscription}
+    end)
     |> Multi.update(
       :subscription,
-      fn %{invoice: %{status: "draft"}} ->
+      fn %{
+           invoice: %{status: "draft"},
+           subscription_before_update: %{collection_method: "send_invoice"}
+         } ->
         subscription
-        |> Ecto.Changeset.change()
+        |> Ecto.Changeset.change(%{status: Subscription.statuses().active})
         |> put_periods()
       end
     )
     |> Oban.insert(:renew_subscription_job, fn %{subscription: subscription} ->
       %{id: subscription.id}
-      |> RenewSubscriptionWorker.new(scheduled_at: subscription.next_period_start)
+      |> SubscriptionCycleWorker.new(scheduled_at: subscription.next_period_start)
+    end)
+    |> Oban.insert(:past_due, fn %{invoice: invoice, subscription: subscription} ->
+      %{subscription_id: subscription.id, invoice_id: invoice.id}
+      |> PastDueSubscriptionWorker.new(scheduled_at: invoice.due_date)
     end)
     |> Repo.transaction()
     |> case do
@@ -428,7 +446,7 @@ defmodule Tailcall.Billing.Subscriptions do
     Multi.new()
     |> Multi.update(:subscription, Subscription.cancel_changeset(subscription, attrs))
     |> Multi.run(:cancel_job, fn repo, %{subscription: subscription} ->
-      worker = Oban.Worker.to_string(RenewSubscriptionWorker)
+      worker = Oban.Worker.to_string(SubscriptionCycleWorker)
       args = %{"id" => subscription.id}
 
       Oban.Job
@@ -642,7 +660,7 @@ defmodule Tailcall.Billing.Subscriptions do
       changeset |> get_field(:items) |> hd() |> Map.get(:price)
 
     %{
-      last: {last_period_end, last_period_start},
+      last: {last_period_start, last_period_end},
       current: {current_period_start, current_period_end},
       next: {next_period_start, next_period_end}
     } =
@@ -708,6 +726,17 @@ defmodule Tailcall.Billing.Subscriptions do
         do: Invoices.Invoice.billing_reasons().subscription_create,
         else: Invoices.Invoice.billing_reasons().subscription_cycle
 
+    line_items =
+      subscription_items
+      |> Enum.reject(fn
+        %{is_prepaid: true} ->
+          false
+
+        %{is_prepaid: false} ->
+          billing_reason == Invoices.Invoice.billing_reasons().subscription_create
+      end)
+      |> Enum.map(&build_invoice_line_item(subscription, &1))
+
     %{
       account_id: subscription.account_id,
       customer_id: subscription.customer_id,
@@ -715,22 +744,27 @@ defmodule Tailcall.Billing.Subscriptions do
       billing_reason: billing_reason,
       collection_method: subscription.collection_method,
       currency: currency(subscription),
-      line_items: subscription_items |> Enum.map(&build_invoice_line_item(subscription, &1)),
+      line_items: line_items,
       livemode: subscription.livemode,
       period_start: subscription.last_period_start,
-      period_end: subscription.last_period_end,
-      total: calculate_total(subscription)
+      period_end: subscription.last_period_end
     }
   end
 
   defp build_invoice_line_item(
          %Subscription{} = subscription,
-         %SubscriptionItem{} = subscription_item
+         %SubscriptionItem{is_prepaid: is_prepaid} = subscription_item
        ) do
+    period_start =
+      if is_prepaid, do: subscription.current_period_start, else: subscription.last_period_start
+
+    period_end =
+      if is_prepaid, do: subscription.current_period_end, else: subscription.last_period_end
+
     %{
       amount: calculate_amount(subscription_item),
-      period_end: subscription.current_period_end,
-      period_start: subscription.current_period_start,
+      period_end: period_end,
+      period_start: period_start,
       price_id: subscription_item.price_id,
       quantity: subscription_item.quantity,
       subscription_item_id: subscription_item.id,
@@ -742,13 +776,6 @@ defmodule Tailcall.Billing.Subscriptions do
     %{price: %{currency: currency}} = subscription_item |> Repo.preload(:price)
 
     currency
-  end
-
-  defp calculate_total(%Subscription{items: subscription_items}) do
-    subscription_items
-    |> Enum.reduce(0, fn subscription_item, acc ->
-      acc + calculate_amount(subscription_item)
-    end)
   end
 
   defp calculate_amount(%SubscriptionItem{price: %Price{} = price, quantity: quantity}) do

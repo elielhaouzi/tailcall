@@ -61,17 +61,10 @@ defmodule Tailcall.Billing.Invoices do
   @spec create_invoice(map()) :: {:ok, Invoice.t()} | {:error, Ecto.Changeset.t()}
   def create_invoice(attrs) when is_map(attrs) do
     status = Map.get(attrs, :status, Invoice.statuses().draft)
-    total = Map.get(attrs, :total)
 
     attrs =
       attrs
-      |> Map.merge(%{
-        created_at: DateTime.utc_now(),
-        status: status,
-        amount_due: total,
-        amount_paid: 0,
-        amount_remaining: total
-      })
+      |> Map.merge(%{created_at: DateTime.utc_now(), status: status})
 
     Multi.new()
     |> Multi.insert(
@@ -256,6 +249,8 @@ defmodule Tailcall.Billing.Invoices do
       |> assoc_constraint_subscription()
       |> maybe_put_due_date()
       |> put_invoice_number()
+      |> put_total()
+      |> put_amount_due_remaining_and_paid()
     end)
   end
 
@@ -341,6 +336,31 @@ defmodule Tailcall.Billing.Invoices do
     else
       changeset
     end
+  end
+
+  defp put_total(%Ecto.Changeset{valid?: false} = changeset), do: changeset
+
+  defp put_total(%Ecto.Changeset{valid?: true} = changeset) do
+    total =
+      changeset
+      |> Ecto.Changeset.get_field(:line_items, [])
+      |> Enum.reduce(0, fn line_item, acc ->
+        acc + line_item.amount
+      end)
+
+    changeset |> Ecto.Changeset.put_change(:total, total)
+  end
+
+  defp put_amount_due_remaining_and_paid(%Ecto.Changeset{valid?: false} = changeset),
+    do: changeset
+
+  defp put_amount_due_remaining_and_paid(%Ecto.Changeset{valid?: true} = changeset) do
+    total = Ecto.Changeset.get_field(changeset, :total)
+
+    changeset
+    |> Ecto.Changeset.put_change(:amount_due, total)
+    |> Ecto.Changeset.put_change(:amount_remaining, total)
+    |> Ecto.Changeset.put_change(:amount_paid, 0)
   end
 
   defp list_order_by_fields(opts) do

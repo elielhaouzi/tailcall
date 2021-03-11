@@ -1,4 +1,4 @@
-defmodule Tailcall.Billing.Subscriptions.Workers.RenewSubscriptionWorker do
+defmodule Tailcall.Billing.Subscriptions.Workers.SubscriptionCycleWorker do
   use Oban.Worker,
     queue: :subscriptions,
     unique: [period: :infinity, fields: [:queue, :args, :worker], keys: [:id]]

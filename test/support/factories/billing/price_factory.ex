@@ -48,8 +48,14 @@ defmodule Tailcall.Factory.Billing.Price do
 
       def make_type_recurring(%Price{} = price, attrs \\ %{}) do
         price
+        |> Map.merge(%{type: Price.types().recurring})
+        |> make_recurring_interval_per_day()
+        |> Map.merge(attrs)
+      end
+
+      def make_recurring_interval_per_day(%Price{} = price, attrs \\ %{}) do
+        price
         |> Map.merge(%{
-          type: Price.types().recurring,
           recurring_interval: Price.recurring_intervals().day,
           recurring_interval_count: 1
         })

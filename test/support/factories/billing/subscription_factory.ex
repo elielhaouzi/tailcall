@@ -73,7 +73,8 @@ defmodule Tailcall.Factory.Billing.Subscription do
           account_id: account_id,
           created_at: utc_now,
           price_id: price_id,
-          quantity: 1
+          quantity: 1,
+          livemode: false
         }
         |> make_prepaid()
         |> struct!(attrs)

@@ -33,6 +33,7 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionItem do
 
     field(:created_at, :utc_datetime)
     field(:is_prepaid, :boolean, default: true)
+    field(:livemode, :boolean, virtual: true)
     field(:metadata, :map, default: %{})
     belongs_to(:price, Price, type: Shortcode.Ecto.ID, prefix: "price")
     field(:quantity, :integer)
@@ -44,8 +45,16 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionItem do
   @spec nested_create_changeset(SubscriptionItem.t(), map()) :: Ecto.Changeset.t()
   def nested_create_changeset(%__MODULE__{} = subscription_item, attrs) when is_map(attrs) do
     subscription_item
-    |> cast(attrs, [:account_id, :created_at, :metadata, :price_id, :quantity])
-    |> validate_required([:account_id, :created_at, :price_id])
+    |> cast(attrs, [
+      :account_id,
+      :created_at,
+      :is_prepaid,
+      :livemode,
+      :metadata,
+      :price_id,
+      :quantity
+    ])
+    |> validate_required([:account_id, :created_at, :livemode, :price_id])
     |> validate_number(:quantity, greater_than_or_equal_to: 0)
     |> assoc_constraint(:price)
     |> maybe_preload_price()
@@ -55,8 +64,8 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionItem do
   @spec nested_update_changeset(SubscriptionItem.t(), map()) :: Ecto.Changeset.t()
   def nested_update_changeset(%__MODULE__{} = subscription_item, attrs) when is_map(attrs) do
     subscription_item
-    |> cast(attrs, [:account_id, :price_id, :quantity, :deleted_at])
-    |> validate_required([:price_id])
+    |> cast(attrs, [:account_id, :livemode, :price_id, :quantity, :deleted_at])
+    |> validate_required([:livemode, :price_id])
     |> validate_number(:quantity, greater_than_or_equal_to: 0)
     |> AntlUtilsEcto.Changeset.validate_datetime_gte(:deleted_at, :created_at)
     |> assoc_constraint(:price)
@@ -70,8 +79,13 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionItem do
   defp maybe_preload_price(%Ecto.Changeset{} = changeset) do
     account_id = get_field(changeset, :account_id)
     price_id = get_field(changeset, :price_id)
+    livemode = get_field(changeset, :livemode)
 
-    price = Prices.get_price(price_id, filters: [account_id: account_id], includes: [:product])
+    price =
+      Prices.get_price(price_id,
+        filters: [account_id: account_id, livemode: livemode],
+        includes: [:product]
+      )
 
     if price do
       %{changeset | data: %{changeset.data | price: price}}
