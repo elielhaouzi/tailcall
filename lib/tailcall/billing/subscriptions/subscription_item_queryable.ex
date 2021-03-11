@@ -28,4 +28,9 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionItemQueryable do
 
     queryable |> preload(price: ^price_query)
   end
+
+  defp filter_by_field({:ongoing_at, %DateTime{} = datetime}, queryable) do
+    queryable
+    |> AntlUtilsEcto.Query.where_period_status(:ongoing, :created_at, :deleted_at, datetime)
+  end
 end

@@ -68,6 +68,7 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionQueryable do
     subscription_item_query =
       SubscriptionItemQueryable.queryable()
       |> SubscriptionItemQueryable.with_preloads(includes)
+      |> SubscriptionItemQueryable.filter(ongoing_at: DateTime.utc_now())
       |> Ecto.Queryable.to_query()
 
     queryable |> preload(items: ^subscription_item_query)

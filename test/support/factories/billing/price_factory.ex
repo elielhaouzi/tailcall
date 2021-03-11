@@ -62,6 +62,15 @@ defmodule Tailcall.Factory.Billing.Price do
         |> Map.merge(attrs)
       end
 
+      def make_recurring_interval_per_month(%Price{} = price, attrs \\ %{}) do
+        price
+        |> Map.merge(%{
+          recurring_interval: Price.recurring_intervals().month,
+          recurring_interval_count: 1
+        })
+        |> Map.merge(attrs)
+      end
+
       def make_recurring_usage_type_licensed(%Price{} = price) do
         price
         |> Map.merge(%{
@@ -94,12 +103,13 @@ defmodule Tailcall.Factory.Billing.Price do
         |> Map.merge(%{recurring_aggregate_usage: Price.recurring_aggregate_usages().max})
       end
 
-      def make_billing_scheme_per_unit(%Price{} = price) do
+      def make_billing_scheme_per_unit(%Price{} = price, attrs \\ %{}) do
         price
         |> Map.merge(%{
           billing_scheme: Price.billing_schemes().per_unit,
           unit_amount: 1_000
         })
+        |> Map.merge(attrs)
       end
 
       def make_billing_scheme_tiered(%Price{} = price) do

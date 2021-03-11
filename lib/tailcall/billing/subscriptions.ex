@@ -255,8 +255,11 @@ defmodule Tailcall.Billing.Subscriptions do
           attrs
           |> Map.get(:items, [])
           |> Enum.map(fn
-            %{is_deleted: true} = subscription_item -> %{subscription_item | deleted_at: utc_now}
-            subscription_item -> subscription_item
+            %{is_deleted: true} = subscription_item ->
+              Map.put(subscription_item, :deleted_at, utc_now)
+
+            subscription_item ->
+              subscription_item
           end)
 
         changed_item_ids = items |> Enum.map(& &1.id) |> Enum.reject(&is_nil/1)
@@ -285,7 +288,19 @@ defmodule Tailcall.Billing.Subscriptions do
           attrs
           |> Map.get(:items)
           |> Enum.flat_map(fn
-            %{id: subscription_item_id, is_deleted: false} ->
+            %{id: subscription_item_id, is_deleted: true} ->
+              subscription_item =
+                subscription_before_update.items |> Enum.find(&(&1.id == subscription_item_id))
+
+              [
+                build_credit_unused_time(
+                  %{subscription_item | subscription: subscription_before_update},
+                  proration_date,
+                  proration_behavior
+                )
+              ]
+
+            %{id: subscription_item_id} ->
               subscription_item_before_update =
                 subscription_before_update.items |> Enum.find(&(&1.id == subscription_item_id))
 
@@ -300,18 +315,6 @@ defmodule Tailcall.Billing.Subscriptions do
                 ),
                 build_debit_remaining_time(
                   %{subscription_after_update_item | subscription: subscription_after_update},
-                  proration_date,
-                  proration_behavior
-                )
-              ]
-
-            %{id: subscription_item_id, is_deleted: true} ->
-              subscription_item =
-                subscription_before_update.items |> Enum.find(&(&1.id == subscription_item_id))
-
-              [
-                build_credit_unused_time(
-                  %{subscription_item | subscription: subscription_before_update},
                   proration_date,
                   proration_behavior
                 )
@@ -336,8 +339,12 @@ defmodule Tailcall.Billing.Subscriptions do
     )
     |> Repo.transaction()
     |> case do
-      {:ok, %{subscription_after_update: %Subscription{} = subscription}} -> {:ok, subscription}
-      {:error, _, changeset, _} -> {:error, changeset}
+      {:ok, %{subscription_after_update: %Subscription{id: subscription_id}}} ->
+        {:ok,
+         get_subscription!(subscription_id, includes: [:customer, [items: [price: :product]]])}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
     end
   end
 
@@ -614,7 +621,7 @@ defmodule Tailcall.Billing.Subscriptions do
       changeset
     else
       changeset
-      |> add_error(:currency, "price must match the expected currency of `#{expected_currency}`")
+      |> add_error(:currency, "price must match the currency `#{expected_currency}`")
     end
   end
 
@@ -641,9 +648,9 @@ defmodule Tailcall.Billing.Subscriptions do
     else
       changeset
       |> add_error(
-        :currency,
-        "price must match the recurring_interval `#{recurring_interval}` and the recurring_interval_count `#{
-          recurring_interval_count
+        :price_id,
+        "price must match the recurring_interval `#{expected_recurring_interval}` and the recurring_interval_count `#{
+          expected_recurring_interval_count
         }`"
       )
     end
