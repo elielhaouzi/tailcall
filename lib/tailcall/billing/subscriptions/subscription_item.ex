@@ -73,6 +73,14 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionItem do
     |> validate_price_is_recurring_type()
   end
 
+  @spec nested_delete_changeset(SubscriptionItem.t(), map()) :: Ecto.Changeset.t()
+  def nested_delete_changeset(%__MODULE__{} = subscription_item, attrs) when is_map(attrs) do
+    subscription_item
+    |> cast(attrs, [:deleted_at])
+    |> validate_required([:deleted_at])
+    |> AntlUtilsEcto.Changeset.validate_datetime_gte(:deleted_at, :created_at)
+  end
+
   defp maybe_preload_price(%Ecto.Changeset{valid?: false} = changeset),
     do: changeset
 

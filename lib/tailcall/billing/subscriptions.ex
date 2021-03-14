@@ -262,7 +262,7 @@ defmodule Tailcall.Billing.Subscriptions do
               subscription_item
           end)
 
-        changed_item_ids = items |> Enum.map(& &1.id) |> Enum.reject(&is_nil/1)
+        changed_item_ids = items |> Enum.map(&Map.get(&1, :id)) |> Enum.reject(&is_nil/1)
 
         unchanged_items =
           subscription.items
@@ -292,47 +292,36 @@ defmodule Tailcall.Billing.Subscriptions do
               subscription_item =
                 subscription_before_update.items |> Enum.find(&(&1.id == subscription_item_id))
 
-              [
-                build_credit_unused_time(
-                  %{subscription_item | subscription: subscription_before_update},
-                  proration_date,
-                  proration_behavior
-                )
-              ]
+              build_prorations_for_deleting_item(
+                %{subscription_item | subscription: subscription_before_update},
+                proration_date,
+                proration_behavior
+              )
 
             %{id: subscription_item_id} ->
               subscription_item_before_update =
                 subscription_before_update.items |> Enum.find(&(&1.id == subscription_item_id))
 
-              subscription_after_update_item =
+              subscription_item_after_update =
                 subscription_after_update.items |> Enum.find(&(&1.id == subscription_item_id))
 
-              [
-                build_credit_unused_time(
-                  %{subscription_item_before_update | subscription: subscription_before_update},
-                  proration_date,
-                  proration_behavior
-                ),
-                build_debit_remaining_time(
-                  %{subscription_after_update_item | subscription: subscription_after_update},
-                  proration_date,
-                  proration_behavior
-                )
-              ]
+              build_prorations_for_updating_item(
+                %{subscription_item_before_update | subscription: subscription_before_update},
+                %{subscription_item_after_update | subscription: subscription_after_update},
+                proration_date,
+                proration_behavior
+              )
 
             %{price_id: price_id} ->
               subscription_item =
                 subscription_after_update.items |> Enum.find(&(&1.price_id == price_id))
 
-              [
-                build_debit_remaining_time(
-                  %{subscription_item | subscription: subscription_after_update},
-                  proration_date,
-                  proration_behavior
-                )
-              ]
+              build_prorations_for_adding_item(
+                %{subscription_item | subscription: subscription_after_update},
+                proration_date,
+                proration_behavior
+              )
           end)
-          |> Enum.reject(&is_nil/1)
 
         InvoiceItems.create_invoice_items(invoice_items)
       end
@@ -348,33 +337,102 @@ defmodule Tailcall.Billing.Subscriptions do
     end
   end
 
-  defp has_prepaid_items?(%Subscription{items: subscription_items}) do
-    subscription_items |> Enum.any?(& &1.is_prepaid)
+  defp has_prepaid_items?(%Subscription{items: subscription_items}),
+    do: subscription_items |> Enum.any?(& &1.is_prepaid)
+
+  defp build_prorations_for_deleting_item(%SubscriptionItem{}, %DateTime{}, "none"), do: []
+
+  defp build_prorations_for_deleting_item(
+         %SubscriptionItem{is_prepaid: true} = subscription_item,
+         %DateTime{} = proration_date,
+         "create_proration"
+       ) do
+    [build_proration_credit(subscription_item, proration_date)]
   end
 
-  defp build_credit_unused_time(_, _, "none" = _proration_behavior), do: nil
+  defp build_prorations_for_deleting_item(
+         %SubscriptionItem{is_prepaid: false} = subscription_item,
+         %DateTime{} = proration_date,
+         "create_proration"
+       ) do
+    [build_proration_debit(subscription_item, proration_date)]
+  end
 
-  defp build_credit_unused_time(
+  defp build_prorations_for_updating_item(
+         %SubscriptionItem{},
+         %SubscriptionItem{},
+         %DateTime{},
+         "none"
+       ) do
+    []
+  end
+
+  defp build_prorations_for_updating_item(
+         %SubscriptionItem{is_prepaid: true} = subscription_item_before_change,
+         %SubscriptionItem{is_prepaid: true} = subscription_item_after_change,
+         %DateTime{} = proration_date,
+         "create_proration"
+       ) do
+    [
+      build_proration_credit(subscription_item_before_change, proration_date),
+      build_proration_debit(subscription_item_after_change, proration_date)
+    ]
+  end
+
+  defp build_prorations_for_updating_item(
+         %SubscriptionItem{is_prepaid: false} = subscription_item_before_change,
+         %SubscriptionItem{is_prepaid: false} = subscription_item_after_change,
+         %DateTime{} = proration_date,
+         "create_proration"
+       ) do
+    [
+      build_proration_credit(subscription_item_after_change, proration_date),
+      build_proration_debit(subscription_item_before_change, proration_date)
+    ]
+  end
+
+  defp build_prorations_for_adding_item(%SubscriptionItem{}, %DateTime{}, "none"), do: []
+
+  defp build_prorations_for_adding_item(
+         %SubscriptionItem{is_prepaid: true} = subscription_item,
+         %DateTime{} = proration_date,
+         "create_proration"
+       ) do
+    [build_proration_debit(subscription_item, proration_date)]
+  end
+
+  defp build_prorations_for_adding_item(
+         %SubscriptionItem{is_prepaid: false} = subscription_item,
+         %DateTime{} = proration_date,
+         "create_proration"
+       ) do
+    [build_proration_credit(subscription_item, proration_date)]
+  end
+
+  defp build_proration_credit(
          %SubscriptionItem{
+           is_prepaid: is_prepaid,
            price: %Price{product: %Product{} = product} = price,
            quantity: quantity,
            subscription: %Subscription{customer: %Customer{} = customer} = subscription
          } = subscription_item,
-         %DateTime{} = proration_date,
-         "create_proration"
+         %DateTime{} = proration_date
        ) do
     billing_period_in_seconds =
       DateTime.diff(subscription.current_period_end, subscription.current_period_start)
 
+    {proration_period_start, proration_period_end} =
+      if is_prepaid,
+        do: {proration_date, subscription.current_period_end},
+        else: {subscription.current_period_start, proration_date}
+
     amount =
-      subscription.current_period_end
-      |> DateTime.diff(proration_date)
-      |> Kernel.*(100)
-      |> Decimal.div(billing_period_in_seconds)
-      |> Decimal.mult(price.unit_amount * quantity)
-      |> Decimal.div(100)
-      |> Decimal.round()
-      |> Decimal.to_integer()
+      calculate_proration_amount(
+        proration_period_start,
+        proration_period_end,
+        billing_period_in_seconds,
+        price.unit_amount * quantity
+      )
 
     description =
       gettext("Unused time on %{quantity} x %{product_name} after %{date}",
@@ -387,35 +445,36 @@ defmodule Tailcall.Billing.Subscriptions do
       amount: -amount,
       description: description,
       is_proration: true,
-      period_start: proration_date,
-      period_end: subscription.current_period_end,
+      period_start: proration_period_start,
+      period_end: proration_period_end,
       quantity: quantity
     })
   end
 
-  defp build_debit_remaining_time(_, _, "none" = _proration_behavior), do: nil
-
-  defp build_debit_remaining_time(
+  defp build_proration_debit(
          %SubscriptionItem{
+           is_prepaid: is_prepaid,
            price: %Price{product: %Product{} = product} = price,
            quantity: quantity,
            subscription: %Subscription{customer: %Customer{} = customer} = subscription
          } = subscription_item,
-         %DateTime{} = proration_date,
-         "create_proration"
+         %DateTime{} = proration_date
        ) do
     billing_period_in_seconds =
       DateTime.diff(subscription.current_period_end, subscription.current_period_start)
 
+    {proration_period_start, proration_period_end} =
+      if is_prepaid,
+        do: {proration_date, subscription.current_period_end},
+        else: {subscription.current_period_start, proration_date}
+
     amount =
-      subscription.current_period_end
-      |> DateTime.diff(proration_date)
-      |> Kernel.*(100)
-      |> Decimal.div(billing_period_in_seconds)
-      |> Decimal.mult(price.unit_amount * quantity)
-      |> Decimal.div(100)
-      |> Decimal.round()
-      |> Decimal.to_integer()
+      calculate_proration_amount(
+        proration_period_start,
+        proration_period_end,
+        billing_period_in_seconds,
+        price.unit_amount * quantity
+      )
 
     description =
       gettext("Remaining time on %{quantity} x %{product_name} after %{date}",
@@ -428,10 +487,28 @@ defmodule Tailcall.Billing.Subscriptions do
       amount: amount,
       description: description,
       is_proration: true,
-      period_start: proration_date,
-      period_end: subscription.current_period_end,
+      period_start: proration_period_start,
+      period_end: proration_period_end,
       quantity: quantity
     })
+  end
+
+  defp calculate_proration_amount(
+         %DateTime{} = period_start,
+         %DateTime{} = period_end,
+         billing_period_in_seconds,
+         full_amount
+       )
+       when is_integer(billing_period_in_seconds) do
+    period_end
+    |> DateTime.diff(period_start)
+    |> abs()
+    |> Kernel.*(100)
+    |> Decimal.div(billing_period_in_seconds)
+    |> Decimal.mult(full_amount)
+    |> Decimal.div(100)
+    |> Decimal.round()
+    |> Decimal.to_integer()
   end
 
   @spec cancel_subscription(Subscription.t(), map) ::
@@ -547,13 +624,30 @@ defmodule Tailcall.Billing.Subscriptions do
     subscription_items = changeset |> get_field(:items, [])
 
     changeset
+    |> validate_has_an_ongoing_item(subscription_items)
     |> validate_prices_has_same_recurring_interval_fields(subscription_items)
     |> validate_prices_has_same_currency(subscription_items)
     |> validate_prices_are_uniq(subscription_items)
   end
 
-  # defp validate_prices_has_same_recurring_interval_fields(%Ecto.Changeset{valid?: false} = changeset, _),
-  #   do: changeset
+  # defp validate_has_an_ongoing_item(%Ecto.Changeset{valid?: false} = changeset, _), do: changeset
+
+  defp validate_has_an_ongoing_item(%Ecto.Changeset{} = changeset, subscription_items)
+       when is_list(subscription_items) do
+    ongoing_items = subscription_items |> Enum.filter(&is_nil(&1.deleted_at))
+
+    if length(ongoing_items) > 0 do
+      changeset
+    else
+      changeset |> add_error(:items, "must have at least one active price")
+    end
+  end
+
+  defp validate_prices_has_same_recurring_interval_fields(
+         %Ecto.Changeset{valid?: false} = changeset,
+         _
+       ),
+       do: changeset
 
   defp validate_prices_has_same_recurring_interval_fields(
          %Ecto.Changeset{} = changeset,
