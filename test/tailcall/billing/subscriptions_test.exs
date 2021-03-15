@@ -1566,72 +1566,72 @@ defmodule Tailcall.Billing.SubscriptionsTest do
       assert %{items: ["must have at least one active price"]} = errors_on(changeset)
     end
 
-    # test "adding an prepaid item with proration with a licensed per_unit price, updates the subscription without creating invoice_items" do
-    #   account = insert!(:account)
+    test "adding an prepaid item with proration with a licensed per_unit price, updates the subscription without creating invoice_items" do
+      account = insert!(:account)
 
-    #   price =
-    #     build(:price, account_id: account.id)
-    #     |> make_type_recurring()
-    #     |> make_recurring_interval_per_day()
-    #     |> make_recurring_usage_type_licensed()
-    #     |> make_billing_scheme_per_unit()
-    #     |> insert!()
+      price =
+        build(:price, account_id: account.id)
+        |> make_type_recurring()
+        |> make_recurring_interval_per_day()
+        |> make_recurring_usage_type_licensed()
+        |> make_billing_scheme_per_unit()
+        |> insert!()
 
-    #   %{items: [subscription_item_factory]} =
-    #     subscription_factory =
-    #     insert!(:subscription,
-    #       account_id: account.id,
-    #       items: [build(:subscription_item, account_id: account.id)]
-    #     )
+      %{items: [subscription_item_factory]} =
+        subscription_factory =
+        insert!(:subscription,
+          account_id: account.id,
+          items: [build(:subscription_item, account_id: account.id)]
+        )
 
-    #   proration_date = utc_now() |> add(8 * 3600)
+      proration_date = utc_now() |> add(8 * 3600)
 
-    #   assert {:ok, %Subscription{items: subscription_items} = subscription} =
-    #            Subscriptions.update_subscription(subscription_factory, %{
-    #              items: [%{price_id: price.id}],
-    #              proration_behavior: Subscription.proration_behaviors().create_proration,
-    #              proration_date: proration_date
-    #            })
+      assert {:ok, %Subscription{items: subscription_items} = subscription} =
+               Subscriptions.update_subscription(subscription_factory, %{
+                 items: [%{price_id: price.id}],
+                 proration_behavior: Subscription.proration_behaviors().create_proration,
+                 proration_date: proration_date
+               })
 
-    #   assert subscription.current_period_start == subscription_factory.current_period_start
-    #   assert subscription.current_period_end == subscription_factory.current_period_end
+      assert subscription.current_period_start == subscription_factory.current_period_start
+      assert subscription.current_period_end == subscription_factory.current_period_end
 
-    #   subscription_item_1 =
-    #     subscription_items |> Enum.find(&(&1.id == subscription_item_factory.id))
+      subscription_item_1 =
+        subscription_items |> Enum.find(&(&1.id == subscription_item_factory.id))
 
-    #   subscription_item_2 =
-    #     subscription_items |> Enum.find(&(&1.id != subscription_item_factory.id))
+      subscription_item_2 =
+        subscription_items |> Enum.find(&(&1.id != subscription_item_factory.id))
 
-    #   assert subscription_item_1.id == subscription_item_factory.id
-    #   assert subscription_item_1.quantity == subscription_item_factory.quantity
-    #   assert subscription_item_1.price_id == subscription_item_factory.price_id
-    #   assert subscription_item_1.updated_at == subscription_item_factory.updated_at
+      assert subscription_item_1.id == subscription_item_factory.id
+      assert subscription_item_1.quantity == subscription_item_factory.quantity
+      assert subscription_item_1.price_id == subscription_item_factory.price_id
+      assert subscription_item_1.updated_at == subscription_item_factory.updated_at
 
-    #   assert subscription_item_2.quantity == 1
-    #   assert subscription_item_2.price_id == price.id
+      assert subscription_item_2.quantity == 1
+      assert subscription_item_2.price_id == price.id
 
-    #   billing_period_in_seconds =
-    #     DateTime.diff(subscription.current_period_end, subscription.current_period_start)
+      billing_period_in_seconds =
+        DateTime.diff(subscription.current_period_end, subscription.current_period_start)
 
-    #   debit_remaining_time =
-    #     subscription.current_period_end
-    #     |> DateTime.diff(proration_date)
-    #     |> Kernel.*(100)
-    #     |> Decimal.div(billing_period_in_seconds)
-    #     |> Decimal.mult(subscription_item_2.price.unit_amount * subscription_item_2.quantity)
-    #     |> Decimal.div(100)
-    #     |> Decimal.round()
-    #     |> Decimal.to_integer()
+      debit_remaining_time =
+        subscription.current_period_end
+        |> DateTime.diff(proration_date)
+        |> Kernel.*(100)
+        |> Decimal.div(billing_period_in_seconds)
+        |> Decimal.mult(subscription_item_2.price.unit_amount * subscription_item_2.quantity)
+        |> Decimal.div(100)
+        |> Decimal.round()
+        |> Decimal.to_integer()
 
-    #   assert %{data: [debit_invoice_item]} =
-    #            InvoiceItems.list_invoice_items(filter: [subscription_id: subscription.id])
+      assert %{data: [debit_invoice_item]} =
+               InvoiceItems.list_invoice_items(filter: [subscription_id: subscription.id])
 
-    #   assert debit_invoice_item.amount == debit_remaining_time
-    #   assert debit_invoice_item.is_proration
-    #   assert debit_invoice_item.subscription_item_id == subscription_item_1.id
-    #   assert debit_invoice_item.period_start == proration_date
-    #   assert debit_invoice_item.period_end == subscription.current_period_end
-    # end
+      assert debit_invoice_item.amount == debit_remaining_time
+      assert debit_invoice_item.is_proration
+      assert debit_invoice_item.subscription_item_id == subscription_item_1.id
+      assert debit_invoice_item.period_start == proration_date
+      assert debit_invoice_item.period_end == subscription.current_period_end
+    end
 
     test "when one of the item's price is not with the same interval, returns an invalid changeset" do
       account = insert!(:account)
