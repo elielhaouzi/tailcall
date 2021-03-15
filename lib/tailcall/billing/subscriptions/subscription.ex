@@ -133,21 +133,12 @@ defmodule Tailcall.Billing.Subscriptions.Subscription do
 
   @spec update_changeset(Subscription.t(), map()) :: Ecto.Changeset.t()
   def update_changeset(%__MODULE__{} = subscription, attrs) when is_map(attrs) do
-    attrs =
-      attrs
-      |> Map.put(:account_id, subscription.account_id)
-      |> Map.put(:livemode, subscription.livemode)
-      |> AntlUtilsElixir.Map.populate_child(:account_id, :items)
-      |> AntlUtilsElixir.Map.populate_child(:livemode, :items)
-
     subscription
     |> cast(attrs, [:current_period_end, :current_period_start, :status])
     |> AntlUtilsEcto.Changeset.validate_datetime_gte(
       :current_period_end,
       :current_period_start
     )
-    |> cast_assoc(:items, with: &SubscriptionItem.nested_update_changeset/2)
-    # |> cast_assoc_items()
     |> validate_inclusion(:status, Map.values(statuses()))
   end
 
@@ -158,11 +149,4 @@ defmodule Tailcall.Billing.Subscriptions.Subscription do
     |> validate_required([:cancel_at, :cancellation_reason, :canceled_at])
     |> AntlUtilsEcto.Changeset.validate_datetime_gte(:cancel_at, :started_at)
   end
-
-  # defp cast_assoc_items(%Ecto.Changeset{valid?: false} = changeset), do: changeset
-
-  # defp cast_assoc_items(%Ecto.Changeset{} = changeset) do
-  #   IO.inspect(changeset)
-  #   IO.inspect(Ecto.Changeset.get_change(changeset, :items), label: "ici")
-  # end
 end

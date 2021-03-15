@@ -64,17 +64,24 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionItem do
   @spec nested_update_changeset(SubscriptionItem.t(), map()) :: Ecto.Changeset.t()
   def nested_update_changeset(%__MODULE__{} = subscription_item, attrs) when is_map(attrs) do
     subscription_item
-    |> cast(attrs, [:account_id, :livemode, :price_id, :quantity, :deleted_at])
+    |> cast(attrs, [:account_id, :livemode, :price_id, :quantity])
     |> validate_required([:livemode, :price_id])
     |> validate_number(:quantity, greater_than_or_equal_to: 0)
-    |> AntlUtilsEcto.Changeset.validate_datetime_gte(:deleted_at, :created_at)
     |> assoc_constraint(:price)
     |> maybe_preload_price()
     |> validate_price_is_recurring_type()
   end
 
-  @spec nested_delete_changeset(SubscriptionItem.t(), map()) :: Ecto.Changeset.t()
-  def nested_delete_changeset(%__MODULE__{} = subscription_item, attrs) when is_map(attrs) do
+  @spec update_changeset(SubscriptionItem.t(), map()) :: Ecto.Changeset.t()
+  def update_changeset(%__MODULE__{} = subscription_item, attrs) when is_map(attrs) do
+    subscription_item
+    |> cast(attrs, [:deleted_at])
+    |> validate_required([:deleted_at])
+    |> AntlUtilsEcto.Changeset.validate_datetime_gte(:deleted_at, :created_at)
+  end
+
+  @spec delete_changeset(SubscriptionItem.t(), map()) :: Ecto.Changeset.t()
+  def delete_changeset(%__MODULE__{} = subscription_item, attrs) when is_map(attrs) do
     subscription_item
     |> cast(attrs, [:deleted_at])
     |> validate_required([:deleted_at])

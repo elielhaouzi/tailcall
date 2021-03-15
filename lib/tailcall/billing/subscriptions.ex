@@ -248,28 +248,46 @@ defmodule Tailcall.Billing.Subscriptions do
        |> lock("FOR UPDATE")
        |> Repo.one!()}
     end)
+    |> Multi.merge(fn %{subscription_before_update: subscription} ->
+      attrs
+      |> Map.get(:items, [])
+      |> Enum.with_index()
+      |> Enum.reduce(Multi.new(), fn
+        {%{id: id, is_deleted: true}, index}, acc ->
+          acc
+          |> Multi.run(:"delete_item_#{id}_#{index}", fn _, %{} ->
+            delete_subscription_item(subscription, id, utc_now)
+          end)
+
+        {%{id: id} = item_attrs, index}, acc ->
+          acc
+          |> Multi.run(:"update_item_#{id}_#{index}", fn _, %{} ->
+            update_subscription_item(subscription, id, item_attrs)
+          end)
+      end)
+    end)
     |> Multi.run(
       :subscription_after_update,
       fn _, %{subscription_before_update: subscription} ->
-        items =
-          attrs
-          |> Map.get(:items, [])
-          |> Enum.map(fn
-            %{is_deleted: true} = subscription_item ->
-              Map.put(subscription_item, :deleted_at, utc_now)
+        # items =
+        #   attrs
+        #   |> Map.get(:items, [])
+        #   |> Enum.map(fn
+        #     %{is_deleted: true} = subscription_item ->
+        #       Map.put(subscription_item, :deleted_at, utc_now)
 
-            subscription_item ->
-              subscription_item
-          end)
+        #     subscription_item ->
+        #       subscription_item
+        #   end)
 
-        changed_item_ids = items |> Enum.map(&Map.get(&1, :id)) |> Enum.reject(&is_nil/1)
+        # changed_item_ids = items |> Enum.map(&Map.get(&1, :id)) |> Enum.reject(&is_nil/1)
 
-        unchanged_items =
-          subscription.items
-          |> Enum.reject(&(&1.id in changed_item_ids))
-          |> Enum.map(&Map.from_struct/1)
+        # unchanged_items =
+        #   subscription.items
+        #   |> Enum.reject(&(&1.id in changed_item_ids))
+        #   |> Enum.map(&Map.from_struct/1)
 
-        attrs = attrs |> Map.put(:items, unchanged_items ++ items)
+        # attrs = attrs |> Map.put(:items, unchanged_items ++ items)
 
         subscription
         |> Subscription.update_changeset(attrs)
@@ -335,6 +353,52 @@ defmodule Tailcall.Billing.Subscriptions do
       {:error, _, changeset, _} ->
         {:error, changeset}
     end
+  end
+
+  def delete_subscription_item(
+        %Subscription{items: items},
+        subscription_item_id,
+        %DateTime{} = delete_at
+      ) do
+    subscription_item = items |> Enum.find(&(&1.id == subscription_item_id))
+
+    if subscription_item do
+      delete_subscription_item(subscription_item_id, delete_at)
+    else
+      {:error,
+       %SubscriptionItem{}
+       |> Ecto.Changeset.change()
+       |> add_error(:id, "does not exist")}
+    end
+  end
+
+  def delete_subscription_item(
+        %SubscriptionItem{deleted_at: nil} = subscription_item,
+        %DateTime{} = delete_at
+      ) do
+    subscription_item
+    |> SubscriptionItem.delete_changeset(%{deleted_at: delete_at})
+    |> Repo.update()
+  end
+
+  def update_subscription_item(%Subscription{items: items}, subscription_item_id, attrs) do
+    subscription_item = items |> Enum.find(&(&1.id == subscription_item_id))
+
+    if subscription_item do
+      update_subscription_item(subscription_item, attrs)
+    else
+      {:error,
+       %SubscriptionItem{}
+       |> Ecto.Changeset.change()
+       |> add_error(:id, "does not exist")}
+    end
+  end
+
+  def update_subscription_item(%SubscriptionItem{deleted_at: nil} = subscription_item, attrs)
+      when is_map(attrs) do
+    subscription_item
+    |> SubscriptionItem.update_changeset(attrs)
+    |> Repo.update()
   end
 
   defp has_prepaid_items?(%Subscription{items: subscription_items}),
