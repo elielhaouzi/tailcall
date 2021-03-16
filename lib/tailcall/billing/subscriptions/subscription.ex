@@ -13,7 +13,7 @@ defmodule Tailcall.Billing.Subscriptions.Subscription do
   alias Tailcall.Core.Customers.Customer
 
   alias Tailcall.Billing.Invoices.Invoice
-  alias Tailcall.Billing.Subscriptions.SubscriptionItem
+  alias Tailcall.Billing.Subscriptions.SubscriptionItems.SubscriptionItem
 
   @type t :: %__MODULE__{
           account: Account.t(),
@@ -58,6 +58,7 @@ defmodule Tailcall.Billing.Subscriptions.Subscription do
     has_one(:latest_invoice, Invoice)
     field(:latest_invoice_id, :string, virtual: true)
     field(:livemode, :boolean)
+    field(:metadata, :map, default: %{})
     field(:next_period_end, :utc_datetime, virtual: true)
     field(:next_period_start, :utc_datetime, virtual: true)
     field(:oban_job_id, :integer, virtual: true)
@@ -131,8 +132,8 @@ defmodule Tailcall.Billing.Subscriptions.Subscription do
     |> cast_assoc(:items, required: true, with: &SubscriptionItem.nested_create_changeset/2)
   end
 
-  @spec update_changeset(Subscription.t(), map()) :: Ecto.Changeset.t()
-  def update_changeset(%__MODULE__{} = subscription, attrs) when is_map(attrs) do
+  @spec internal_update_changeset(Subscription.t(), map()) :: Ecto.Changeset.t()
+  def internal_update_changeset(%__MODULE__{} = subscription, attrs) when is_map(attrs) do
     subscription
     |> cast(attrs, [:current_period_end, :current_period_start, :status])
     |> AntlUtilsEcto.Changeset.validate_datetime_gte(
@@ -140,6 +141,12 @@ defmodule Tailcall.Billing.Subscriptions.Subscription do
       :current_period_start
     )
     |> validate_inclusion(:status, Map.values(statuses()))
+  end
+
+  @spec external_update_changeset(Subscription.t(), map()) :: Ecto.Changeset.t()
+  def external_update_changeset(%__MODULE__{} = subscription, attrs) when is_map(attrs) do
+    subscription
+    |> cast(attrs, [:metadata])
   end
 
   @spec cancel_changeset(Subscription.t(), map()) :: Ecto.Changeset.t()

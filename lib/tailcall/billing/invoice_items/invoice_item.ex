@@ -1,24 +1,13 @@
 defmodule Tailcall.Billing.InvoiceItems.InvoiceItem do
   use Ecto.Schema
 
-  import Ecto.Changeset,
-    only: [
-      assoc_constraint: 2,
-      cast: 3,
-      cast_assoc: 3,
-      cast_embed: 2,
-      get_field: 2,
-      put_change: 3,
-      put_embed: 3,
-      validate_inclusion: 3,
-      validate_number: 3,
-      validate_required: 2
-    ]
+  import Ecto.Changeset, only: [assoc_constraint: 2, cast: 3, validate_required: 2]
 
   alias Tailcall.Accounts.Account
   alias Tailcall.Core.Customers.Customer
   alias Tailcall.Billing.Prices.Price
-  alias Tailcall.Billing.Subscriptions.{Subscription, SubscriptionItem}
+  alias Tailcall.Billing.Subscriptions.Subscription
+  alias Tailcall.Billing.Subscriptions.SubscriptionItems.SubscriptionItem
   alias Tailcall.Billing.Invoices.Invoice
 
   @type t :: %__MODULE__{

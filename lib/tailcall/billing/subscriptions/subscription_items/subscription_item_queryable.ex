@@ -1,6 +1,6 @@
-defmodule Tailcall.Billing.Subscriptions.SubscriptionItemQueryable do
+defmodule Tailcall.Billing.Subscriptions.SubscriptionItems.SubscriptionItemQueryable do
   use AntlUtilsEcto.Queryable,
-    base_schema: Tailcall.Billing.Subscriptions.SubscriptionItem
+    base_schema: Tailcall.Billing.Subscriptions.SubscriptionItems.SubscriptionItem
 
   import Ecto.Query, only: [preload: 2]
 

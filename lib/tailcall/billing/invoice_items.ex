@@ -14,8 +14,8 @@ defmodule Tailcall.Billing.InvoiceItems do
   alias Tailcall.Billing.Prices
   alias Tailcall.Billing.Prices.Price
   alias Tailcall.Billing.Subscriptions
-  alias Tailcall.Billing.Subscriptions.{Subscription, SubscriptionItem}
-  alias Tailcall.Billing.Invoices
+  alias Tailcall.Billing.Subscriptions.Subscription
+  alias Tailcall.Billing.Subscriptions.SubscriptionItems.SubscriptionItem
   alias Tailcall.Billing.Invoices.Invoice
   alias Tailcall.Billing.InvoiceItems.{InvoiceItem, InvoiceItemQueryable}
 

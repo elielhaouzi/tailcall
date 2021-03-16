@@ -6,7 +6,7 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionQueryable do
 
   alias Tailcall.Core.Customers
   alias Tailcall.Billing.Invoices
-  alias Tailcall.Billing.Subscriptions.SubscriptionItemQueryable
+  alias Tailcall.Billing.Subscriptions.SubscriptionItems.SubscriptionItemQueryable
 
   @spec with_preloads(Ecto.Queryable.t(), list(atom())) :: Ecto.Queryable.t()
   def with_preloads(queryable, includes) when is_list(includes) do

@@ -1,5 +1,6 @@
 defmodule Tailcall.Factory.Billing.Subscription do
-  alias Tailcall.Billing.Subscriptions.{Subscription, SubscriptionItem}
+  alias Tailcall.Billing.Subscriptions.Subscription
+  alias Tailcall.Billing.Subscriptions.SubscriptionItems.SubscriptionItem
 
   defmacro __using__(_opts) do
     quote do

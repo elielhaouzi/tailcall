@@ -1,8 +1,8 @@
-defmodule Tailcall.Billing.Subscriptions.SubscriptionItemTest do
+defmodule Tailcall.Billing.Subscriptions.SubscriptionItems.SubscriptionItemTest do
   use ExUnit.Case, async: true
   use Tailcall.DataCase
 
-  alias Tailcall.Billing.Subscriptions.SubscriptionItem
+  alias Tailcall.Billing.Subscriptions.SubscriptionItems.SubscriptionItem
 
   @moduletag :subscriptions
 
@@ -47,9 +47,8 @@ defmodule Tailcall.Billing.Subscriptions.SubscriptionItemTest do
       changeset = SubscriptionItem.nested_create_changeset(%SubscriptionItem{}, %{})
 
       refute changeset.valid?
-      assert length(changeset.errors) == 4
+      assert length(changeset.errors) == 3
       assert %{account_id: ["can't be blank"]} = errors_on(changeset)
-      assert %{created_at: ["can't be blank"]} = errors_on(changeset)
       assert %{livemode: ["can't be blank"]} = errors_on(changeset)
       assert %{price_id: ["can't be blank"]} = errors_on(changeset)
     end

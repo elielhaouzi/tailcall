@@ -23,7 +23,7 @@ defmodule Tailcall.Repo.Migrations.CreateSubscriptionsTable do
       # add(:default_source_id, :integer, null: true)
       add(:ended_at, :utc_datetime, null: true)
       add(:livemode, :boolean, null: false)
-      # add(:metadata, :map, null: true)
+      add(:metadata, :map, null: false)
       # add(:pending_invoice_item_interval_interval, :string, null: true)
       # add(:pending_invoice_item_interval_interval_count, :string, null: true)
       add(:started_at, :utc_datetime, null: false)
